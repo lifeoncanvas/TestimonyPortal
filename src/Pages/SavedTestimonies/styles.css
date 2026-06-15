@@ -1,0 +1,12 @@
+.saved-testimonies-page { padding-bottom: 80px; }
+.saved-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 16px 8px; }
+.saved-header h1 { margin: 0; font-size: 22px; }
+.saved-header span { font-size: 13px; color: #888; }
+.saved-list { padding: 0 16px; display: flex; flex-direction: column; gap: 12px; }
+.saved-item { display: flex; gap: 12px; background: #fff; border-radius: 12px; padding: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); cursor: pointer; align-items: center; }
+.saved-item-thumb { width: 64px; height: 64px; border-radius: 8px; background: linear-gradient(135deg, #dcccf4, #c8b5f0); flex-shrink: 0; }
+.saved-item-body { flex: 1; }
+.saved-tag { display: inline-block; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 20px; margin-bottom: 4px; }
+.saved-item-body h3 { margin: 0 0 4px; font-size: 13px; line-height: 1.4; }
+.saved-item-meta { display: flex; justify-content: space-between; font-size: 11px; color: #999; }
+.saved-item-unsave { background: none; border: none; cursor: pointer; padding: 4px; flex-shrink: 0; }

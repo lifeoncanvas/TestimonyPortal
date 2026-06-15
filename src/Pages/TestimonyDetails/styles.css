@@ -1,0 +1,977 @@
+/*
+ * TestimonyDetails — styles.css
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Fonts:    Cormorant Garamond (headings / body text) + Manrope (UI labels)
+ * Palette:  Navy (#0f2447) · Gold (#c9a96e) · Cream (#faf7f2) · White (#fff)
+ *
+ * File structure:
+ *   1.  Font import
+ *   2.  Reset & base page shell
+ *   3.  Hero banner  (dark blue media player at the top)
+ *   4.  Body wrapper (single col mobile, 2-col grid desktop)
+ *   5.  Meta row     (category badge + date)
+ *   6.  Title
+ *   7.  Author card
+ *   8.  Testimony text + pull-quote + fade-out + read-more
+ *   9.  Engagement bar (Bless · Comment · Share · Same Miracle)
+ *   10. Prayer button
+ *   11. Section title
+ *   12. Comment input row
+ *   13. Comment card + reply
+ *   14. Related testimonies (horizontal scroll on mobile, sidebar on desktop)
+ *   15. Toast notification
+ *   16. Responsive breakpoints
+ *       ├── 640px  (large phones / foldables)
+ *       ├── 768px  (tablet portrait)
+ *       └── 1024px (desktop — switches body to 2-col grid)
+ *   17. Accessibility (prefers-reduced-motion)
+ *   18. Safe-area insets (notched phones)
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+
+
+/* ═══════════════════════════════════════════════════════════
+   1. FONT IMPORT
+   ═══════════════════════════════════════════════════════════ */
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Manrope:wght@400;500;600&display=swap');
+
+
+/* ═══════════════════════════════════════════════════════════
+   2. RESET & BASE PAGE SHELL
+   ═══════════════════════════════════════════════════════════
+   Scoped reset keeps these rules from leaking into other pages.
+   padding-bottom pushes content above the fixed BottomNav (70px)
+   plus any device safe-area (e.g. iPhone home indicator).
+   ═══════════════════════════════════════════════════════════ */
+.td-page *,
+.td-page *::before,
+.td-page *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+.td-page {
+  font-family: 'Manrope', sans-serif;
+  background: #faf7f2;
+  min-height: 100dvh;
+  padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px));
+  color: #0f2447;
+  -webkit-font-smoothing: antialiased;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   3. HERO BANNER
+   ═══════════════════════════════════════════════════════════
+   Full-width dark navy banner at the top of the page.
+   Contains: decorative glow, decorative cross, back button,
+   and the media player (play button + progress bar).
+   ═══════════════════════════════════════════════════════════ */
+
+/* Outer container — clips all child decorations */
+.td-hero {
+  position: relative;
+  width: 100%;
+  height: 220px;
+  background: linear-gradient(160deg, #0f2447 0%, #1e3d70 55%, #2a5298 100%);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+/* Soft radial gold glow overlaid on the banner — decorative only */
+.td-hero-glow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 40% 65%, rgba(201,169,110,0.18) 0%, transparent 65%);
+  pointer-events: none;
+}
+
+/* Faint ✝ watermark in the top-right corner — decorative only */
+.td-hero-cross {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 80px;
+  color: #e8d5b0;
+  opacity: 0.08;
+  line-height: 1;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Back arrow button — top-left of the hero */
+.td-back {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  width: 36px;
+  height: 36px;
+  /* min dimensions ensure a comfortable tap target on touch devices */
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.22);
+  background: rgba(255,255,255,0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  cursor: pointer;
+}
+
+/* Centred column that holds the media label, play button, and progress bar */
+.td-player-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+/* Small uppercase label above the play button ("Audio Testimony" / "Video Testimony") */
+.td-media-label {
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #c9a96e;
+  font-family: 'Manrope', sans-serif;
+}
+
+/* Circular play / pause button */
+.td-play-btn {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.35);
+  background: rgba(255,255,255,0.13);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.td-play-btn:hover,
+.td-play-btn:active { background: rgba(255,255,255,0.22); }
+
+/* Wrapper that constrains the progress bar width */
+.td-progress-wrap {
+  width: calc(100% - 40px);
+}
+
+/* Grey track behind the gold fill */
+.td-progress-track {
+  height: 3px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+/* Gold fill — width is set inline via style={{ width: `${progress}%` }} */
+.td-progress-fill {
+  height: 100%;
+  background: #c9a96e;
+  border-radius: 2px;
+  transition: width 0.3s linear;
+}
+
+/* Elapsed / total time labels below the progress bar */
+.td-progress-times {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 5px;
+  font-size: 10px;
+  color: rgba(255,255,255,0.45);
+  font-family: 'Manrope', sans-serif;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   4. BODY WRAPPER
+   ═══════════════════════════════════════════════════════════
+   On mobile: single column, padded.
+   On desktop (≥1024px): becomes a CSS grid with two columns
+   — main content on the left, related testimonies on the right.
+   The grid override lives in the @media (min-width: 1024px) block.
+   ═══════════════════════════════════════════════════════════ */
+.td-body {
+  padding: 20px 16px 0;
+  max-width: 680px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   5. META ROW  (category badge + publication date)
+   ═══════════════════════════════════════════════════════════ */
+.td-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+/* Green pill badge showing the testimony category (e.g. "Healing") */
+.td-badge {
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: #e8f4ec;
+  color: #2a7a4b;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+}
+
+/* Muted date text next to the badge */
+.td-date {
+  font-size: 11px;
+  color: #9a8f84;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   6. TITLE
+   ═══════════════════════════════════════════════════════════
+   Uses clamp() so the title scales fluidly between mobile and desktop
+   without hard breakpoint jumps.
+   ═══════════════════════════════════════════════════════════ */
+.td-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(1.6rem, 5vw, 2.2rem);
+  font-weight: 600;
+  line-height: 1.2;
+  color: #0f2447;
+  margin-bottom: 18px;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   7. AUTHOR CARD
+   ═══════════════════════════════════════════════════════════
+   White card row: [avatar] [name + church/location] [Follow btn]
+   ═══════════════════════════════════════════════════════════ */
+.td-author {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: white;
+  border-radius: 16px;
+  padding: 12px 14px;
+  margin-bottom: 22px;
+  border: 0.5px solid #e7ddd1;
+}
+
+/* Circular avatar with gold gradient background showing initials */
+.td-avatar {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #c9a96e, #e8d5b0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 17px;
+  font-weight: 600;
+  color: #0f2447;
+}
+
+/* Text block to the right of the avatar */
+.td-author-info {
+  flex: 1;
+  min-width: 0; /* allows text-overflow: ellipsis to work inside a flex child */
+}
+
+.td-author-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f2447;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.td-author-sub {
+  font-size: 11px;
+  color: #9a8f84;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Outlined Follow button on the far right of the author card */
+.td-follow-btn {
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1.5px solid #0f2447;
+  background: transparent;
+  color: #0f2447;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: 'Manrope', sans-serif;
+  white-space: nowrap;
+  min-height: 36px;
+  transition: background 0.15s, color 0.15s;
+}
+.td-follow-btn:hover,
+.td-follow-btn:active {
+  background: #0f2447;
+  color: white;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   DIVIDER
+   ═══════════════════════════════════════════════════════════
+   Thin 1px horizontal rule used between major sections.
+   ═══════════════════════════════════════════════════════════ */
+.td-divider {
+  height: 1px;
+  background: #e7ddd1;
+  margin: 22px 0;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   8. TESTIMONY TEXT, PULL-QUOTE, FADE-OUT, READ-MORE
+   ═══════════════════════════════════════════════════════════ */
+
+/* Relative positioning needed so the fade-out overlay can be absolute */
+.td-text {
+  position: relative;
+}
+
+/* Body paragraph text — large serif for a premium editorial feel */
+.td-text p {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(1.1rem, 3.5vw, 1.25rem);
+  line-height: 1.9;
+  color: #2c1f0e;
+  margin-bottom: 1em;
+}
+
+/* Highlighted pull-quote injected after the first paragraph */
+.td-pullquote {
+  border-left: 3px solid #c9a96e;
+  padding: 8px 0 8px 16px;
+  margin: 16px 0;
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: clamp(1.15rem, 4vw, 1.35rem);
+  color: #0f2447;
+  line-height: 1.5;
+}
+
+/*
+  Gradient overlay that fades the last visible paragraph into the background.
+  Only shown when testimony text is collapsed (expanded === false).
+*/
+.td-fade-out {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background: linear-gradient(to bottom, transparent, #faf7f2);
+  pointer-events: none;
+}
+
+/* "Read full testimony ↓" / "Show less ↑" toggle button */
+.td-read-more {
+  display: flex;
+  align-items: center;
+  margin-top: 8px;
+  font-size: 13px;
+  color: #c9a96e;
+  font-weight: 600;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: 'Manrope', sans-serif;
+  min-height: 44px; /* comfortable tap target */
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   9. ENGAGEMENT BAR
+   ═══════════════════════════════════════════════════════════
+   Four equally-wide buttons in a single white rounded row.
+   Layout: CSS grid with 4 equal columns.
+   Active states (.td-blessed, .td-miracled) change icon colour.
+   ═══════════════════════════════════════════════════════════ */
+.td-engage {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  background: white;
+  border-radius: 18px;
+  border: 0.5px solid #e7ddd1;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+/* Individual engagement button — stacks icon, count, and label vertically */
+.td-eng-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 14px 4px;
+  min-height: 76px; /* ensures comfortable tap target on touch devices */
+  border: none;
+  border-right: 0.5px solid #e7ddd1; /* vertical divider between buttons */
+  background: transparent;
+  cursor: pointer;
+  font-family: 'Manrope', sans-serif;
+  color: #8d8278;
+  transition: background 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.td-eng-btn:last-child { border-right: none; } /* no divider after last button */
+.td-eng-btn:active     { background: #faf7f2; }
+
+/* Default icon colour — overridden by active state modifiers below */
+.td-eng-btn svg { color: #8d8278; flex-shrink: 0; }
+
+/* Bless button active state — red heart */
+.td-eng-btn.td-blessed  svg { color: #c0392b; }
+
+/* Same Miracle active state — green sparkle */
+.td-eng-btn.td-miracled svg { color: #2a7a4b; }
+
+/* Numeric count displayed below the icon */
+.td-eng-count {
+  font-size: 12px;
+  color: #0f2447;
+  font-weight: 600;
+  line-height: 1;
+}
+
+/* Small uppercase label below the count */
+.td-eng-label {
+  font-size: 9px;
+  color: #9a8f84;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-align: center;
+  line-height: 1.2;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   10. PRAYER BUTTON
+   ═══════════════════════════════════════════════════════════
+   Full-width navy CTA below the engagement bar.
+   Changes to green once the user has joined in prayer.
+   Disabled after first tap to prevent duplicate submissions.
+   ═══════════════════════════════════════════════════════════ */
+.td-prayer-btn {
+  width: 100%;
+  background: linear-gradient(135deg, #0f2447, #1e3d70);
+  color: white;
+  border: none;
+  border-radius: 18px;
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(1rem, 3.5vw, 1.15rem);
+  font-weight: 600;
+  transition: opacity 0.2s;
+  min-height: 56px;
+}
+.td-prayer-btn svg { color: #c9a96e; flex-shrink: 0; }
+.td-prayer-btn:hover { opacity: 0.9; }
+
+/* Joined state — turns green */
+.td-prayer-btn.td-prayer-joined {
+  background: linear-gradient(135deg, #2a7a4b, #1a5a34);
+  opacity: 1;
+  cursor: default;
+}
+.td-prayer-btn:disabled { cursor: default; }
+
+
+/* ═══════════════════════════════════════════════════════════
+   11. SECTION TITLE
+   ═══════════════════════════════════════════════════════════
+   Reused heading style for "X Comments" and "Related Testimonies".
+   ═══════════════════════════════════════════════════════════ */
+.td-section-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(1.2rem, 4vw, 1.5rem);
+  font-weight: 600;
+  color: #0f2447;
+  margin-bottom: 14px;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   12. COMMENT INPUT ROW
+   ═══════════════════════════════════════════════════════════
+   Pill-shaped row: [user avatar] [text input] [send button]
+   ═══════════════════════════════════════════════════════════ */
+.td-comment-input-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: white;
+  border-radius: 999px;
+  border: 0.5px solid #e7ddd1;
+  padding: 8px 10px 8px 12px;
+  margin-bottom: 16px;
+}
+
+.td-comment-input-row input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 13px;
+  color: #0f2447;
+  font-family: 'Manrope', sans-serif;
+  min-height: 36px;
+}
+.td-comment-input-row input::placeholder { color: #b0a89e; }
+
+/* Circular send button at the right end of the input row */
+.td-send-btn {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  border-radius: 50%;
+  background: #0f2447;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: white;
+  transition: background 0.15s;
+}
+.td-send-btn:active { background: #1e3d70; }
+
+
+/* ═══════════════════════════════════════════════════════════
+   13. COMMENT CARD + REPLY
+   ═══════════════════════════════════════════════════════════
+   Each comment is a white card with:
+     - Header row: [avatar] [name] [time]
+     - Body text (indented to align under the name)
+     - Action row: Like count + Reply button
+     - Optional replies (nested, slightly indented, cream background)
+   ═══════════════════════════════════════════════════════════ */
+.td-comment {
+  background: white;
+  border-radius: 16px;
+  border: 0.5px solid #e7ddd1;
+  padding: 14px;
+  margin-bottom: 10px;
+}
+
+.td-comment-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+/* Small coloured circle showing commenter's initials */
+.td-c-avatar {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: #0f2447;
+}
+
+.td-c-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f2447;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.td-c-time {
+  font-size: 11px;
+  color: #b0a89e;
+  white-space: nowrap;
+}
+
+/* Comment body text — indented to align under the name (avatar width + gap = 42px) */
+.td-c-text {
+  font-size: 13px;
+  color: #4a3f35;
+  line-height: 1.6;
+  padding-left: 42px;
+}
+
+/* Like + Reply buttons row */
+.td-c-actions {
+  display: flex;
+  gap: 16px;
+  margin-top: 10px;
+  padding-left: 42px;
+}
+
+.td-c-act {
+  font-size: 11px;
+  color: #9a8f84;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  font-family: 'Manrope', sans-serif;
+  padding: 0;
+  min-height: 36px;
+}
+
+/* ── Nested reply — cream background, indented under the parent comment ── */
+.td-reply {
+  background: #faf7f2;
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin: 10px 0 0 42px; /* left indent matches comment body indent */
+}
+
+.td-reply-header {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+/* Smaller avatar for replies */
+.td-r-avatar {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 600;
+  color: #0f2447;
+}
+
+.td-r-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #0f2447;
+}
+
+.td-r-text {
+  font-size: 12px;
+  color: #6b5e4e;
+  line-height: 1.55;
+  padding-left: 32px; /* aligns under .td-r-name */
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   14. RELATED TESTIMONIES
+   ═══════════════════════════════════════════════════════════
+   Mobile:  horizontal scroll row — cards are 150px wide, snapping
+   Desktop: vertical stack in the right sidebar (overridden in @media 1024px)
+   ═══════════════════════════════════════════════════════════ */
+
+/* Horizontal scroll container on mobile */
+.td-related-scroll {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  -webkit-overflow-scrolling: touch; /* smooth momentum scroll on iOS */
+  scrollbar-width: none;             /* hide scrollbar in Firefox */
+  scroll-snap-type: x mandatory;     /* cards snap into place when swiping */
+}
+.td-related-scroll::-webkit-scrollbar { display: none; } /* hide scrollbar in Chrome/Safari */
+
+/* Individual related testimony card */
+.td-related-card {
+  flex: 0 0 150px; /* fixed width — prevents shrinking in the flex scroll row */
+  cursor: pointer;
+  scroll-snap-align: start;
+}
+.td-related-card:focus-visible {
+  outline: 2px solid #c9a96e;
+  border-radius: 16px;
+}
+
+/* Gradient thumbnail box — background set inline from THUMB_COLORS */
+.td-r-thumb {
+  height: 185px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.td-r-title {
+  font-size: 13px;
+  color: #0f2447;
+  margin-top: 8px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.td-r-author {
+  font-size: 11px;
+  color: #9a8f84;
+  margin-top: 3px;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   15. TOAST NOTIFICATION
+   ═══════════════════════════════════════════════════════════
+   Fixed pill at the bottom of the viewport.
+   Invisible by default (opacity: 0, slightly translated down).
+   .td-toast-show animates it into view.
+   Auto-dismisses after 2.2s — controlled in the component via showToast().
+   ═══════════════════════════════════════════════════════════ */
+.td-toast {
+  position: fixed;
+  bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  transform: translateX(-50%) translateY(14px);
+  background: #0f2447;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: 'Manrope', sans-serif;
+  opacity: 0;
+  transition: opacity 0.25s, transform 0.25s;
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 300;
+}
+
+/* Visible state — slides up and fades in */
+.td-toast.td-toast-show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   16. RESPONSIVE BREAKPOINTS
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── 640px: large phones and foldables ─────────────────── */
+@media (min-width: 640px) {
+  .td-hero        { height: 260px; }
+  .td-hero-cross  { font-size: 110px; }
+  .td-play-btn    { width: 68px; height: 68px; }
+  .td-body        { padding: 24px 24px 0; }
+  .td-related-card { flex: 0 0 170px; }
+  .td-r-thumb     { height: 205px; }
+  .td-engage      { border-radius: 20px; }
+  .td-eng-label   { font-size: 10px; }
+  .td-eng-count   { font-size: 13px; }
+}
+
+/* ── 768px: tablet portrait ────────────────────────────── */
+@media (min-width: 768px) {
+  .td-hero { height: 300px; }
+  .td-body { padding: 28px 32px 0; }
+
+  /* Author card gets more breathing room */
+  .td-author      { padding: 16px 18px; gap: 16px; }
+  .td-avatar      { width: 52px; height: 52px; min-width: 52px; font-size: 20px; }
+  .td-author-name { font-size: 15px; }
+  .td-author-sub  { font-size: 12px; }
+  .td-follow-btn  { padding: 8px 18px; font-size: 13px; }
+
+  /* Increase comment indents to match the larger avatar */
+  .td-c-text    { padding-left: 48px; }
+  .td-c-actions { padding-left: 48px; }
+  .td-reply     { margin-left: 48px; }
+  .td-r-text    { padding-left: 36px; }
+
+  .td-comment-input-row { padding: 10px 14px; }
+  .td-related-card      { flex: 0 0 190px; }
+  .td-r-thumb           { height: 220px; }
+  .td-r-title           { font-size: 14px; }
+}
+
+/* ── 1024px: desktop ───────────────────────────────────────
+   KEY LAYOUT CHANGE:
+   - .td-page gets a max-width of 1100px and is horizontally centred.
+   - .td-hero spans the full 1100px container width.
+   - .td-body becomes a CSS grid with two columns:
+       Left column  (1fr)    — main content (everything except related)
+       Right column (320px)  — related testimonies sidebar, sticky
+   - Each direct child of .td-body that should stay in the LEFT column
+     is explicitly set to grid-column: 1 / 2.
+   - .td-related-section is placed in grid-column: 2 / 3 with grid-row: 1 / 20
+     so it spans the full height of the left column content.
+   ─────────────────────────────────────────────────────── */
+@media (min-width: 1024px) {
+
+  /* Centred page shell — hero width sets the overall container */
+  .td-page {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0;
+  }
+
+  /* Hero stretches to the full 1100px, with rounded bottom corners */
+  .td-hero {
+    width: 100%;
+    height: 420px;
+    border-radius: 0 0 24px 24px;
+  }
+  .td-hero-cross    { font-size: 160px; }
+  .td-play-btn      { width: 80px; height: 80px; }
+  .td-progress-wrap { width: 520px; } /* wider progress bar on large screens */
+
+  /* Body switches to a two-column grid matching the hero width */
+  .td-body {
+    display: grid;
+    grid-template-columns: 1fr 320px; /* main | sidebar */
+    column-gap: 40px;
+    padding: 40px 48px 0;
+    max-width: 100%;
+    margin: 0;
+  }
+
+  /*
+    All main-content elements stay in the LEFT column.
+    Without this, the CSS grid auto-places them and
+    they might bleed into the sidebar column.
+  */
+  .td-meta-row,
+  .td-title,
+  .td-author,
+  .td-divider,
+  .td-text,
+  .td-read-more,
+  .td-engage,
+  .td-prayer-btn,
+  .td-section-title,
+  .td-comment-input-row,
+  .td-comment {
+    grid-column: 1 / 2;
+  }
+
+  /*
+    Related section goes into the RIGHT column.
+    grid-row: 1 / 20 spans it across all rows so it
+    fills the full height of the left-column content.
+    position: sticky keeps it in view as the user scrolls.
+  */
+  .td-related-section {
+    grid-column: 2 / 3;
+    grid-row: 1 / 20;
+    position: sticky;
+    top: 32px;
+    align-self: start;
+    padding-top: 4px;
+  }
+
+  /* Related cards stack vertically in the sidebar instead of scrolling horizontally */
+  .td-related-scroll {
+    flex-direction: column;
+    overflow-x: visible;
+    gap: 14px;
+    padding-bottom: 0;
+  }
+
+  .td-related-card { flex: none; width: 100%; }
+
+  .td-r-thumb  { height: 150px; border-radius: 14px; }
+  .td-r-title  { font-size: 13px; }
+  .td-r-author { font-size: 11px; }
+
+  /* Engagement bar gets more height and larger text on desktop */
+  .td-eng-label { font-size: 11px; }
+  .td-eng-count { font-size: 15px; }
+  .td-eng-btn   { min-height: 88px; padding: 16px 8px; }
+
+  /* Prayer button fills the full left column width */
+  .td-prayer-btn { width: 100%; }
+
+  /* Title is larger on desktop */
+  .td-title { font-size: 2.4rem; }
+
+  /* Author card adjustments */
+  .td-avatar      { width: 52px; height: 52px; min-width: 52px; font-size: 20px; }
+  .td-author-name { font-size: 15px; }
+  .td-follow-btn  { padding: 9px 20px; font-size: 13px; }
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   17. ACCESSIBILITY — prefers-reduced-motion
+   ═══════════════════════════════════════════════════════════
+   Disables all transitions for users who have requested
+   reduced motion in their OS accessibility settings.
+   ═══════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  .td-progress-fill { transition: none; }
+  .td-toast         { transition: opacity 0.1s; }
+  .td-follow-btn,
+  .td-play-btn,
+  .td-send-btn,
+  .td-prayer-btn,
+  .td-eng-btn       { transition: none; }
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   18. SAFE-AREA INSETS
+   ═══════════════════════════════════════════════════════════
+   Ensures the body content is never hidden behind the
+   notch or home indicator on iPhones / Android devices.
+   Uses @supports to avoid breaking older browsers.
+   ═══════════════════════════════════════════════════════════ */
+@supports (padding: env(safe-area-inset-left)) {
+  .td-body {
+    padding-left:  max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
+  }
+
+  @media (min-width: 640px) {
+    .td-body {
+      padding-left:  max(24px, env(safe-area-inset-left));
+      padding-right: max(24px, env(safe-area-inset-right));
+    }
+  }
+
+  @media (min-width: 768px) {
+    .td-body {
+      padding-left:  max(32px, env(safe-area-inset-left));
+      padding-right: max(32px, env(safe-area-inset-right));
+    }
+  }
+}

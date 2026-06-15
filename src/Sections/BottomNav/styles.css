@@ -1,0 +1,33 @@
+.bottom-nav{
+  position:fixed;
+  bottom:20px;
+  left:50%;
+  transform:translateX(-50%);
+
+  background:#111;
+
+  padding:10px;
+  border-radius:999px;
+
+  display:flex;
+  gap:px;
+
+  z-index:100;
+}
+
+
+
+.bottom-nav button{
+  border:none;
+  background:none;
+  color:white;
+  font-size:18px;
+}
+
+.center-btn{
+  width:48px;
+  height:48px;
+  border-radius:50%;
+  background:#d9b88f !important;
+}
+

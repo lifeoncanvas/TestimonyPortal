@@ -1,0 +1,847 @@
+import { useState, useRef, useCallback } from "react";
+import "./styles.css";
+
+// ─── SVG Icon Set ─────────────────────────────────────────────────────────────
+// Pure inline SVGs so no icon library dependency is needed.
+
+const Icon = {
+  Text: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 6h16M4 10h10M4 14h12M4 18h8" />
+    </svg>
+  ),
+  Video: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="6" width="14" height="12" rx="2" />
+      <path d="m22 8-6 4 6 4V8Z" />
+    </svg>
+  ),
+  Mic: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="9" y="2" width="6" height="11" rx="3" />
+      <path d="M5 10a7 7 0 0 0 14 0M12 19v3M8 22h8" />
+    </svg>
+  ),
+  Upload: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />
+    </svg>
+  ),
+  Pin: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="10" r="3" /><path d="M12 2a8 8 0 0 0-8 8c0 5.4 7 13 8 13s8-7.6 8-13a8 8 0 0 0-8-8Z" />
+    </svg>
+  ),
+  Church: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2v4M10 4h4M3 10h18M5 10v11h14V10M10 21v-5h4v5" />
+    </svg>
+  ),
+  Tag: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2H7a2 2 0 0 0-2 2v5l8.5 8.5a2 2 0 0 0 2.83 0l4.17-4.17a2 2 0 0 0 0-2.83L12 2Z" /><circle cx="8.5" cy="8.5" r="1" fill="currentColor" />
+    </svg>
+  ),
+  Star: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2l2.9 6.1L22 9.3l-5 4.9 1.2 6.8L12 18l-6.2 3 1.2-6.8-5-4.9 7.1-1.2L12 2Z" />
+    </svg>
+  ),
+  Plus: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" /><path d="M12 8v8M8 12h8" />
+    </svg>
+  ),
+};
+
+// ─── Format Definitions ───────────────────────────────────────────────────────
+const FORMATS = [
+  {
+    id: "text",
+    Icon: Icon.Text,
+    label: "Text Only",
+    desc: "Write your testimony in your own words",
+    hasMedia: false,
+  },
+  {
+    id: "record-video",
+    Icon: Icon.Video,
+    label: "Record Video",
+    desc: "Share your story face to face on camera",
+    hasMedia: true,
+  },
+  {
+    id: "record-audio",
+    Icon: Icon.Mic,
+    label: "Record Audio",
+    desc: "Speak your testimony as a voice note",
+    hasMedia: true,
+  },
+  {
+    id: "upload",
+    Icon: Icon.Upload,
+    label: "Upload Media",
+    desc: "Attach existing photos or videos",
+    hasMedia: true,
+  },
+];
+
+// ─── API ──────────────────────────────────────────────────────────────────────
+// TODO: uncomment when backend is ready
+// const API = {
+//   categories: "/api/categories",
+//   submit:     "/api/testimonies",
+//   media:      (id) => `/api/testimonies/${id}/media`,
+// };
+
+// ── Mock data (remove once API is live) ──────────────────────────────────────
+const MOCK_CATEGORIES = [
+  { id: 1, name: "Healing" },
+  { id: 2, name: "Provision" },
+  { id: 3, name: "Marriage & Family" },
+  { id: 4, name: "Salvation" },
+  { id: 5, name: "Career & Business" },
+  { id: 6, name: "Protection" },
+];
+
+// ─── Step Definitions (dynamic based on format) ───────────────────────────────
+const stepsFor = (formatId) =>
+  formatId === "text"
+    ? [
+        { label: "Format",   icon: "◇" },
+        { label: "Story",    icon: "✦" },
+        { label: "Preview",  icon: "◉" },
+        { label: "Done",     icon: "✧" },
+      ]
+    : [
+        { label: "Format",   icon: "◇" },
+        { label: "Story",    icon: "✦" },
+        { label: "Media",    icon: "◈" },
+        { label: "Preview",  icon: "◉" },
+        { label: "Done",     icon: "✧" },
+      ];
+
+// step indices that work for both layouts
+const S = {
+  FORMAT:  0,
+  STORY:   1,
+  MEDIA:   2,   // only used by non-text formats
+  // preview + done are offset by –1 for text-only
+  preview: (isText) => (isText ? 2 : 3),
+  done:    (isText) => (isText ? 3 : 4),
+};
+
+// ─── useRecorder hook ─────────────────────────────────────────────────────────
+function useRecorder(type /* "video" | "audio" */) {
+  const [recState, setRecState] = useState("idle"); // idle | recording | done
+  const [elapsed,  setElapsed]  = useState(0);
+  const [blobUrl,  setBlobUrl]  = useState(null);
+  const [blobFile, setBlobFile] = useState(null);
+  const [bars,     setBars]     = useState(Array(28).fill(8));
+
+  const mediaRef    = useRef(null); // <video> element for cam preview
+  const recorderRef = useRef(null);
+  const chunksRef   = useRef([]);
+  const timerRef    = useRef(null);
+  const streamRef   = useRef(null);
+  const analyserRef = useRef(null);
+  const animRef     = useRef(null);
+
+  // Animate waveform from AnalyserNode
+  const animateBars = useCallback(() => {
+    if (!analyserRef.current) return;
+    const data = new Uint8Array(analyserRef.current.frequencyBinCount);
+    analyserRef.current.getByteFrequencyData(data);
+    const newBars = Array.from({ length: 28 }, (_, i) => {
+      const idx = Math.floor((i / 28) * data.length);
+      return 6 + (data[idx] / 255) * 44;
+    });
+    setBars(newBars);
+    animRef.current = requestAnimationFrame(animateBars);
+  }, []);
+
+  const start = async () => {
+    setBlobUrl(null);
+    setBlobFile(null);
+    setElapsed(0);
+    chunksRef.current = [];
+    try {
+      const constraints =
+        type === "video" ? { video: true, audio: true } : { audio: true };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      streamRef.current = stream;
+
+      // Hook up audio analyser
+      const ctx      = new AudioContext();
+      const source   = ctx.createMediaStreamSource(stream);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 64;
+      source.connect(analyser);
+      analyserRef.current = analyser;
+      animRef.current = requestAnimationFrame(animateBars);
+
+      // Live camera preview
+      if (type === "video" && mediaRef.current) {
+        mediaRef.current.srcObject = stream;
+        mediaRef.current.play().catch(() => {});
+      }
+
+      const recorder = new MediaRecorder(stream);
+      recorderRef.current = recorder;
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+      recorder.onstop = () => {
+        cancelAnimationFrame(animRef.current);
+        setBars(Array(28).fill(8));
+        const mime = type === "video" ? "video/webm" : "audio/webm";
+        const blob = new Blob(chunksRef.current, { type: mime });
+        const file = new File([blob], `recording.webm`, { type: mime });
+        setBlobFile(file);
+        setBlobUrl(URL.createObjectURL(blob));
+        setRecState("done");
+      };
+      recorder.start();
+      setRecState("recording");
+      timerRef.current = setInterval(() => setElapsed((s) => s + 1), 1000);
+    } catch {
+      alert(
+        type === "video"
+          ? "Could not access your camera or microphone. Please check browser permissions."
+          : "Could not access your microphone. Please check browser permissions."
+      );
+    }
+  };
+
+  const stop = useCallback(() => {
+    clearInterval(timerRef.current);
+    cancelAnimationFrame(animRef.current);
+    recorderRef.current?.stop();
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    if (mediaRef.current) mediaRef.current.srcObject = null;
+  }, []);
+
+  const reset = () => {
+    stop();
+    setBlobUrl(null);
+    setBlobFile(null);
+    setElapsed(0);
+    setBars(Array(28).fill(8));
+    setRecState("idle");
+  };
+
+  const fmt = (s) =>
+    `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+
+  return { recState, elapsed, blobUrl, blobFile, bars, mediaRef, start, stop, reset, fmt };
+}
+
+// ─── Waveform Component ───────────────────────────────────────────────────────
+function Waveform({ bars, live }) {
+  return (
+    <div className="mms-waveform">
+      {bars.map((h, i) => (
+        <div
+          key={i}
+          className={`mms-wave-bar${live ? " live" : ""}`}
+          style={{ height: `${h}px` }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+export default function UploadStepper({ onSuccess }) {
+  const [step,       setStep]       = useState(0);
+  const [format,     setFormat]     = useState(null);
+  const [categories, setCategories] = useState(MOCK_CATEGORIES); // TODO: replace with [] and fetch from API
+  // const [loadingCats, setLoadingCats] = useState(true);        // TODO: uncomment when API is live
+  const [submitting, setSubmitting] = useState(false);
+  const [error,      setError]      = useState(null);
+  const [testimonyId,setTestimonyId]= useState(null);
+  const [progress,   setProgress]   = useState(0);
+  const [dragOver,   setDragOver]   = useState(false);
+
+  const [form, setForm] = useState({
+    title: "", categoryId: "", country: "", church: "", zone: "", description: "",
+  });
+  const [uploadedFiles, setUploadedFiles] = useState([]);
+
+  const videoRec = useRecorder("video");
+  const audioRec = useRecorder("audio");
+
+  // ── Fetch categories from API (uncomment when backend is ready)
+  // useEffect(() => {
+  //   fetch(API.categories)
+  //     .then((r) => r.json())
+  //     .then(setCategories)
+  //     .catch(() => setCategories([]))
+  //     .finally(() => setLoadingCats(false));
+  // }, []);
+
+  const set    = (k, v) => setForm((p) => ({ ...p, [k]: v }));
+  const isText = format?.id === "text";
+  const steps  = stepsFor(format?.id);
+  const PREVIEW = S.preview(isText);
+  const DONE    = S.done(isText);
+
+  const canContinueStory =
+    form.title.trim() &&
+    form.categoryId &&
+    form.description.trim().length > 20;
+
+  const canContinueMedia =
+    format?.id === "upload"
+      ? true                                    // upload is always optional
+      : format?.id === "record-video"
+      ? videoRec.recState === "done"
+      : format?.id === "record-audio"
+      ? audioRec.recState === "done"
+      : true;
+
+  const addFiles = (sel) =>
+    setUploadedFiles((p) => [
+      ...p,
+      ...Array.from(sel).map((f) => ({ file: f, url: URL.createObjectURL(f) })),
+    ]);
+  const removeFile = (i) => setUploadedFiles((p) => p.filter((_, idx) => idx !== i));
+
+  // ── Submit testimony text → get ID
+  const handleSubmitStory = async () => {
+    setError(null);
+    setSubmitting(true);
+    try {
+      // TODO: uncomment fetch block and remove mock once backend is ready
+      // const res = await fetch(API.submit, {
+      //   method: "POST",
+      //   headers: { "Content-Type": "application/json" },
+      //   body: JSON.stringify({
+      //     title:       form.title,
+      //     description: form.description,
+      //     categoryId:  Number(form.categoryId),
+      //     country:     form.country,
+      //     church:      form.church,
+      //     zone:        form.zone,
+      //   }),
+      // });
+      // if (!res.ok) throw new Error("Submission failed. Please try again.");
+      // const { id } = await res.json();
+
+      // ── Mock: simulate network delay + fake ID ────────────────────────────
+      await new Promise((r) => setTimeout(r, 800));
+      const id = Math.floor(Math.random() * 9000) + 1000; // e.g. 4271
+      // ─────────────────────────────────────────────────────────────────────
+
+      setTestimonyId(id);
+      setStep(isText ? PREVIEW : S.MEDIA);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // ── Upload media files + recorded blobs
+  const handleFinalSubmit = async () => {
+    setError(null);
+    setSubmitting(true);
+    try {
+      const allFiles = [...uploadedFiles];
+      if (format?.id === "record-video" && videoRec.blobFile)
+        allFiles.push({ file: videoRec.blobFile, url: videoRec.blobUrl });
+      if (format?.id === "record-audio" && audioRec.blobFile)
+        allFiles.push({ file: audioRec.blobFile, url: audioRec.blobUrl });
+
+      // TODO: uncomment loop and remove mock once backend is ready
+      // for (let i = 0; i < allFiles.length; i++) {
+      //   const fd = new FormData();
+      //   fd.append("file", allFiles[i].file);
+      //   const res = await fetch(API.media(testimonyId), { method: "POST", body: fd });
+      //   if (!res.ok) throw new Error(`Upload failed for file ${i + 1}.`);
+      //   setProgress(Math.round(((i + 1) / allFiles.length) * 100));
+      // }
+
+      // ── Mock: simulate upload progress ────────────────────────────────────
+      const total = Math.max(allFiles.length, 1);
+      for (let i = 0; i < total; i++) {
+        await new Promise((r) => setTimeout(r, 600));
+        setProgress(Math.round(((i + 1) / total) * 100));
+      }
+      // ─────────────────────────────────────────────────────────────────────
+
+      setStep(DONE);
+      onSuccess?.({ id: testimonyId, ...form });
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const goBack = () => {
+    setError(null);
+    setStep((s) => s - 1);
+  };
+
+  const selectedCategory = categories.find(
+    (c) => String(c.id) === String(form.categoryId)
+  );
+  const fmt = FORMATS.find((f) => f.id === format?.id);
+
+  // ── Preview media element
+  const previewMedia = () => {
+    if (format?.id === "record-video" && videoRec.blobUrl)
+      return <video src={videoRec.blobUrl} controls />;
+    if (format?.id === "record-audio" && audioRec.blobUrl)
+      return <audio src={audioRec.blobUrl} controls />;
+    if (uploadedFiles.length > 0) {
+      const f = uploadedFiles[0];
+      return f.file.type.startsWith("image")
+        ? <img src={f.url} alt="" />
+        : <video src={f.url} controls />;
+    }
+    return <span className="mms-preview-empty">✦</span>;
+  };
+
+  // ── Connector fill array (length = steps.length − 1)
+  const connFill = steps.slice(0, -1).map((_, i) => step > i);
+
+  // ─── Render ─────────────────────────────────────────────────────────────────
+  return (
+    <div className="mms-root">
+
+      {/* ── Header ── */}
+      <header className="mms-header">
+        <span className="mms-eyebrow">My Miracle Story</span>
+        <h1>Share What <em>God</em> Has Done</h1>
+        <p>Your testimony is someone else's miracle waiting to happen.</p>
+      </header>
+
+      {/* ── Stepper ── */}
+      <nav className="mms-stepper" aria-label="Progress">
+        {steps.map((s, i) => (
+          <div key={s.label} style={{ display: "contents" }}>
+            <div className={[
+              "mms-step-item",
+              i === step ? "active" : "",
+              i <  step ? "done"   : "",
+            ].join(" ").trim()}>
+              <div className={[
+                "mms-step-node",
+                i === step ? "active" : "",
+                i <  step ? "done"   : "",
+              ].join(" ").trim()}>
+                {i < step ? "✓" : s.icon}
+              </div>
+              <span className="mms-step-label">{s.label}</span>
+            </div>
+            {i < steps.length - 1 && (
+              <div className="mms-step-connector">
+                <div className={`mms-step-connector-fill${connFill[i] ? " filled" : ""}`} />
+              </div>
+            )}
+          </div>
+        ))}
+      </nav>
+
+      {/* ══════════════════════════════════════════════
+          STEP 0 — Choose Format
+      ══════════════════════════════════════════════ */}
+      {step === S.FORMAT && (
+        <div className="mms-card">
+          <span className="mms-step-eyebrow">Step 1 of {steps.length}</span>
+          <h2>Choose a Format</h2>
+          <p className="mms-card-sub">How would you like to share your testimony?</p>
+
+          <div className="mms-format-grid">
+            {FORMATS.map((f) => (
+              <div
+                key={f.id}
+                className={`mms-format-tile${format?.id === f.id ? " selected" : ""}`}
+                onClick={() => setFormat(f)}
+                role="radio"
+                aria-checked={format?.id === f.id}
+              >
+                <div className="mms-format-check">✓</div>
+                <f.Icon />
+                <span className="mms-format-tile-label">{f.label}</span>
+                <span className="mms-format-tile-desc">{f.desc}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════
+          STEP 1 — Tell Your Story
+      ══════════════════════════════════════════════ */}
+      {step === S.STORY && (
+        <div className="mms-card">
+          <span className="mms-step-eyebrow">Step 2 of {steps.length}</span>
+          <h2>Tell Your Story</h2>
+          <p className="mms-card-sub">Write in your own words — God moves through testimony.</p>
+
+          {/* Format context pill */}
+          {fmt && (
+            <div className="mms-format-pill">
+              <fmt.Icon /> {fmt.label}
+            </div>
+          )}
+
+          {error && <div className="mms-error">{error}</div>}
+
+          <div className="mms-field">
+            <label>Testimony Title</label>
+            <input
+              placeholder="e.g. God restored my health in three days"
+              value={form.title}
+              onChange={(e) => set("title", e.target.value)}
+            />
+          </div>
+
+          <div className="mms-field">
+            <label>Category</label>
+            <select
+              value={form.categoryId}
+              onChange={(e) => set("categoryId", e.target.value)}
+              // disabled={loadingCats}  // TODO: uncomment when fetching from API
+            >
+              <option value="">Select a category</option>
+              {/* TODO: replace MOCK_CATEGORIES with API response */}
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="mms-row">
+            <div className="mms-field">
+              <label>Country</label>
+              <input placeholder="Nigeria" value={form.country} onChange={(e) => set("country", e.target.value)} />
+            </div>
+            <div className="mms-field">
+              <label>Zone</label>
+              <input placeholder="Zone 4" value={form.zone} onChange={(e) => set("zone", e.target.value)} />
+            </div>
+          </div>
+
+          <div className="mms-field">
+            <label>Church</label>
+            <input placeholder="Christ Embassy Lagos" value={form.church} onChange={(e) => set("church", e.target.value)} />
+          </div>
+
+          <div className="mms-field">
+            <label>Your Testimony</label>
+            <textarea
+              rows={7}
+              placeholder="Share what happened in your own words…"
+              value={form.description}
+              onChange={(e) => set("description", e.target.value)}
+              maxLength={2000}
+            />
+            <div className={`mms-char${form.description.length > 1800 ? " warn" : ""}`}>
+              {form.description.length} / 2000
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════
+          STEP 2 — Media  (skipped for text-only)
+      ══════════════════════════════════════════════ */}
+      {step === S.MEDIA && !isText && (
+        <div className="mms-card">
+          <span className="mms-step-eyebrow">Step 3 of {steps.length}</span>
+
+          {/* ── Record Video ── */}
+          {format?.id === "record-video" && (
+            <>
+              <h2>Record Your Video</h2>
+              <p className="mms-card-sub">
+                {videoRec.recState === "idle"      && "Tap the button below — we'll ask for camera & microphone access."}
+                {videoRec.recState === "recording" && "Camera is live. Speak clearly, then tap to stop."}
+                {videoRec.recState === "done"      && "Looking good! Re-record any time or continue."}
+              </p>
+              {error && <div className="mms-error">{error}</div>}
+
+              <div className="mms-record-area">
+                {/* Cam preview / playback */}
+                {videoRec.recState !== "done" && (
+                  <video
+                    ref={videoRec.mediaRef}
+                    muted
+                    playsInline
+                    className="mms-cam-preview"
+                    style={{ display: videoRec.recState === "recording" ? "block" : "none" }}
+                  />
+                )}
+                {videoRec.recState === "done" && videoRec.blobUrl && (
+                  <>
+                    <div className="mms-playback">
+                      <video src={videoRec.blobUrl} controls />
+                    </div>
+                    <button className="mms-redo-btn" onClick={videoRec.reset}>↺  Record Again</button>
+                  </>
+                )}
+
+                {/* Waveform + timer + button (while not done) */}
+                {videoRec.recState !== "done" && (
+                  <>
+                    <Waveform bars={videoRec.bars} live={videoRec.recState === "recording"} />
+                    <div className={`mms-rec-timer${videoRec.recState === "recording" ? " live" : ""}`}>
+                      {videoRec.fmt(videoRec.elapsed)}
+                    </div>
+                    <div className="mms-rec-btn-wrap">
+                      <button
+                        className={`mms-rec-btn${videoRec.recState === "recording" ? " live" : ""}`}
+                        onClick={videoRec.recState === "recording" ? videoRec.stop : videoRec.start}
+                        aria-label={videoRec.recState === "recording" ? "Stop recording" : "Start recording"}
+                      >
+                        <div className="mms-rec-dot" />
+                      </button>
+                      <span className="mms-rec-hint">
+                        {videoRec.recState === "idle"
+                          ? "Tap to enable camera and start"
+                          : "Tap to stop recording"}
+                      </span>
+                    </div>
+                    {videoRec.recState === "idle" && (
+                      <p className="mms-perm-tip">
+                        Your browser will request camera and microphone permission — please allow it to continue.
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* ── Record Audio ── */}
+          {format?.id === "record-audio" && (
+            <>
+              <h2>Record Your Audio</h2>
+              <p className="mms-card-sub">
+                {audioRec.recState === "idle"      && "Tap the button below — we'll ask for microphone access."}
+                {audioRec.recState === "recording" && "Microphone is live. Speak clearly, then tap to stop."}
+                {audioRec.recState === "done"      && "Audio captured! Re-record any time or continue."}
+              </p>
+              {error && <div className="mms-error">{error}</div>}
+
+              <div className="mms-record-area">
+                {audioRec.recState === "done" && audioRec.blobUrl ? (
+                  <>
+                    <div className="mms-playback">
+                      <audio src={audioRec.blobUrl} controls />
+                    </div>
+                    <button className="mms-redo-btn" onClick={audioRec.reset}>↺  Record Again</button>
+                  </>
+                ) : (
+                  <>
+                    <Waveform bars={audioRec.bars} live={audioRec.recState === "recording"} />
+                    <div className={`mms-rec-timer${audioRec.recState === "recording" ? " live" : ""}`}>
+                      {audioRec.fmt(audioRec.elapsed)}
+                    </div>
+                    <div className="mms-rec-btn-wrap">
+                      <button
+                        className={`mms-rec-btn${audioRec.recState === "recording" ? " live" : ""}`}
+                        onClick={audioRec.recState === "recording" ? audioRec.stop : audioRec.start}
+                        aria-label={audioRec.recState === "recording" ? "Stop recording" : "Start recording"}
+                      >
+                        <div className="mms-rec-dot" />
+                      </button>
+                      <span className="mms-rec-hint">
+                        {audioRec.recState === "idle"
+                          ? "Tap to enable microphone and start"
+                          : "Tap to stop recording"}
+                      </span>
+                    </div>
+                    {audioRec.recState === "idle" && (
+                      <p className="mms-perm-tip">
+                        Your browser will request microphone permission — please allow it to continue.
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* ── Upload Media ── */}
+          {format?.id === "upload" && (
+            <>
+              <h2>Upload Media</h2>
+              <p className="mms-card-sub">
+                Add photos or videos that go alongside your testimony. Optional but powerful.
+              </p>
+              {error && <div className="mms-error">{error}</div>}
+
+              <div
+                className={`mms-upload-box${dragOver ? " over" : ""}`}
+                onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={(e) => { e.preventDefault(); setDragOver(false); addFiles(e.dataTransfer.files); }}
+              >
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*,video/*"
+                  onChange={(e) => addFiles(e.target.files)}
+                />
+                <Icon.Plus />
+                <h4>Drop files or tap to browse</h4>
+                <p>Images and videos · Max 50 MB each</p>
+              </div>
+
+              {uploadedFiles.length > 0 && (
+                <div className="mms-media-grid">
+                  {uploadedFiles.map((item, i) => (
+                    <div key={i} className="mms-media-thumb">
+                      {item.file.type.startsWith("image")
+                        ? <img src={item.url} alt="" />
+                        : <video src={item.url} />}
+                      <span className="mms-thumb-type">
+                        {item.file.type.startsWith("image") ? "IMG" : "VID"}
+                      </span>
+                      <button className="mms-thumb-remove" onClick={() => removeFile(i)}>×</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Upload progress */}
+          {submitting && progress > 0 && (
+            <div className="mms-progress-bar">
+              <div className="mms-progress-fill" style={{ width: `${progress}%` }} />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════
+          PREVIEW STEP
+      ══════════════════════════════════════════════ */}
+      {step === PREVIEW && (
+        <div className="mms-card">
+          <span className="mms-step-eyebrow">Step {PREVIEW + 1} of {steps.length}</span>
+          <h2>Review Before Submitting</h2>
+          <p className="mms-card-sub">Make sure everything looks right.</p>
+
+          <div className="mms-preview-media">{previewMedia()}</div>
+
+          {selectedCategory && (
+            <div className="mms-preview-badge">✦ {selectedCategory.name}</div>
+          )}
+          <h2 className="mms-preview-title">{form.title}</h2>
+          <p className="mms-preview-story">{form.description}</p>
+
+          <div className="mms-preview-meta">
+            {form.country && (
+              <div className="mms-meta-pill"><Icon.Pin />{form.country}</div>
+            )}
+            {form.church && (
+              <div className="mms-meta-pill"><Icon.Church />{form.church}</div>
+            )}
+            {form.zone && (
+              <div className="mms-meta-pill"><Icon.Tag />{form.zone}</div>
+            )}
+            {fmt && (
+              <div className="mms-meta-pill"><fmt.Icon />{fmt.label}</div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════
+          DONE
+      ══════════════════════════════════════════════ */}
+      {step === DONE && (
+        <div className="mms-card">
+          <div className="mms-success">
+            <div className="mms-success-halo">🙏</div>
+            <h2>Testimony Received</h2>
+            <p>
+              Your story is under review and will be published shortly.
+              Thank you for sharing what God has done.
+            </p>
+            {testimonyId && (
+              <div className="mms-success-ref">
+                Reference ID: <strong>#{testimonyId}</strong>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════
+          ACTION BUTTONS
+      ══════════════════════════════════════════════ */}
+      {step < DONE && (
+        <div className="mms-actions">
+
+          {step > 0 && (
+            <button className="mms-btn-secondary" onClick={goBack} disabled={submitting}>
+              Back
+            </button>
+          )}
+
+          {/* Format → Story */}
+          {step === S.FORMAT && (
+            <button
+              className="mms-btn-primary"
+              onClick={() => setStep(S.STORY)}
+              disabled={!format}
+            >
+              Continue →
+            </button>
+          )}
+
+          {/* Story → API → next */}
+          {step === S.STORY && (
+            <button
+              className="mms-btn-primary"
+              onClick={handleSubmitStory}
+              disabled={!canContinueStory || submitting}
+            >
+              {submitting
+                ? <><span className="mms-spinner" /> Saving…</>
+                : <>Continue →</>}
+            </button>
+          )}
+
+          {/* Media → Preview (disabled until recording complete for rec formats) */}
+          {step === S.MEDIA && !isText && (
+            <button
+              className="mms-btn-primary"
+              onClick={() => { setError(null); setStep(PREVIEW); }}
+              disabled={!canContinueMedia || submitting}
+            >
+              Preview →
+            </button>
+          )}
+
+          {/* Preview → Submit */}
+          {step === PREVIEW && (
+            <button
+              className="mms-btn-primary"
+              onClick={
+                isText
+                  ? () => { setStep(DONE); onSuccess?.({ ...form }); }
+                  : handleFinalSubmit
+              }
+              disabled={submitting}
+            >
+              {submitting
+                ? <><span className="mms-spinner" /> Uploading…</>
+                : <>Submit Testimony</>}
+            </button>
+          )}
+
+        </div>
+      )}
+
+    </div>
+  );
+}

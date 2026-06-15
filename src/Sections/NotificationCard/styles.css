@@ -1,0 +1,6 @@
+.notification-card { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px solid #f0f0f0; }
+.notification-card.unread { background: #f8f7ff; }
+.notif-dot { width: 8px; height: 8px; border-radius: 50%; background: #6c5ce7; flex-shrink: 0; }
+.notification-card.read .notif-dot { background: #ccc; }
+.notif-content p { margin: 0; font-size: 14px; }
+.notif-content span { font-size: 12px; color: #999; }

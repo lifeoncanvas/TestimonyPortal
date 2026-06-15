@@ -1,0 +1,4 @@
+.analytics-card { display: flex; align-items: center; gap: 16px; padding: 16px; background: #fff; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.analytics-icon { font-size: 28px; }
+.analytics-value { font-size: 22px; font-weight: 700; margin: 0; }
+.analytics-label { font-size: 12px; color: #999; margin: 2px 0 0; }
