@@ -3,7 +3,7 @@
 // Tabs remaining: Saved · Analytics · Notifications
 
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import {
   ChevronLeft, Bell, Settings, Camera, Heart, Bookmark,
   Eye, Share2, TrendingUp, CheckCircle, Clock, ChevronRight,

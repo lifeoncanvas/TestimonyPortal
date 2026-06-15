@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { Bookmark, Heart } from "lucide-react";
 import BottomNav from "../../Sections/BottomNav/BottomNav";
 import "./styles.css";

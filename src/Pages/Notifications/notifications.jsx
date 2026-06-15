@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { ChevronLeft, Bell, Heart, MessageCircle, CheckCircle, Flame, Eye, X } from "lucide-react";
 import BottomNav from "../../Sections/BottomNav/BottomNav";
 import "./styles.css";

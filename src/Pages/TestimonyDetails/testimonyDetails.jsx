@@ -29,7 +29,7 @@
 
 // ─── 1. IMPORTS ──────────────────────────────────────────────────────────────
 import React, { useState, useRef, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router";
 import {
   ChevronLeft, Play, Pause,
   Heart, MessageCircle, Share2, Sparkles, Flame, Send,

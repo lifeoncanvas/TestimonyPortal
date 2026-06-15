@@ -1,6 +1,6 @@
 // Homepage.jsx
 import { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import BottomNav from "../../Sections/BottomNav/BottomNav";
 import "./styles.css";
 

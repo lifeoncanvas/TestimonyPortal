@@ -1,5 +1,5 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import "./styles.css";
 import BottomNav from "../../Sections/BottomNav/BottomNav";
 import { Search, ChevronLeft, Eye, Heart, Play, BookOpen, Clock } from "lucide-react";

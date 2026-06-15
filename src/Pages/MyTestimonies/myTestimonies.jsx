@@ -4,7 +4,7 @@
 // All API calls are commented out — mock data is active.
 
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import {
   ChevronLeft, Plus, Eye, Heart, CheckCircle, Clock,
   MoreHorizontal, Edit3, Trash2, Share2, XCircle,
