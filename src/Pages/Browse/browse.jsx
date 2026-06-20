@@ -158,26 +158,100 @@ function FeedCard({ item, navigate }) {
 }
 
 // ─── Browse page ──────────────────────────────────────────────────────────────
+import { useState, useEffect, useMemo } from "react";
+import api from "../../services/axiosConfig";
+
 const Browse = () => {
   const navigate = useNavigate();
-  const [activeCategory, setActiveCategory] = React.useState("All");
-  const [query, setQuery] = React.useState("");
+  const [activeCategory, setActiveCategory] = useState("All");
+  const [query, setQuery] = useState("");
 
-  // Filter rows + feed by active category + search query
-  const filteredRows = TESTIMONY_ROWS.filter(
-    (row) => activeCategory === "All" || row.category === activeCategory
-  ).map((row) => ({
-    ...row,
-    items: query.trim()
-      ? row.items.filter((i) => i.title.toLowerCase().includes(query.toLowerCase()))
-      : row.items,
-  })).filter((row) => row.items.length > 0);
+  const [categories, setCategories] = useState(["All"]);
+  const [testimonies, setTestimonies] = useState([]);
+  const [featured, setFeatured] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const filteredFeed = RECENT_FEED.filter(
-    (item) =>
-      (activeCategory === "All" || item.category === activeCategory) &&
-      (!query.trim() || item.title.toLowerCase().includes(query.toLowerCase()))
-  );
+  useEffect(() => {
+    // 1. Fetch categories
+    api.get("/api/categories")
+      .then(res => {
+        const catNames = ["All", ...res.data.map(c => c.name)];
+        setCategories(catNames);
+      })
+      .catch(err => console.error("Error loading categories:", err));
+
+    // 2. Fetch featured testimony for hero
+    api.get("/api/testimonies/featured")
+      .then(res => {
+        if (res.data && res.data.length > 0) {
+          setFeatured(res.data[0]);
+        }
+      })
+      .catch(err => console.error("Error loading featured:", err));
+
+    // 3. Fetch all testimonies to group and filter
+    api.get("/api/testimonies", { params: { size: 50 } })
+      .then(res => {
+        setTestimonies(res.data.content || []);
+      })
+      .catch(err => console.error("Error loading browse testimonies:", err))
+      .finally(() => setLoading(false));
+  }, []);
+
+  // Group testimonies by category for rows
+  const testimonyRows = useMemo(() => {
+    const grouped = {};
+    testimonies.forEach(t => {
+      const catName = t.category?.name || "Miracle";
+      if (!grouped[catName]) {
+        grouped[catName] = [];
+      }
+      grouped[catName].push(t);
+    });
+
+    return Object.keys(grouped).map(catName => ({
+      title: `${catName} Testimonies`,
+      category: catName,
+      items: grouped[catName].map(t => ({
+        id: t.id,
+        title: t.title,
+        author: t.user?.name || "Anonymous",
+        location: t.country || "",
+        views: t.viewCount || 0,
+        likes: t.likeCount || 0
+      }))
+    }));
+  }, [testimonies]);
+
+  const recentFeed = useMemo(() => {
+    return testimonies.slice(0, 10).map((t, idx) => ({
+      id: t.id,
+      title: t.title,
+      category: t.category?.name || "Miracle",
+      location: t.country || "",
+      readTime: "3 min read",
+      gradient: FEED_GRADIENTS[idx % FEED_GRADIENTS.length]
+    }));
+  }, [testimonies]);
+
+  const filteredRows = useMemo(() => {
+    return testimonyRows.filter(
+      (row) => activeCategory === "All" || row.category === activeCategory
+    ).map((row) => ({
+      ...row,
+      items: query.trim()
+        ? row.items.filter((i) => i.title.toLowerCase().includes(query.toLowerCase()))
+        : row.items,
+    })).filter((row) => row.items.length > 0);
+  }, [testimonyRows, activeCategory, query]);
+
+  const filteredFeed = useMemo(() => {
+    return recentFeed.filter(
+      (item) =>
+        (activeCategory === "All" || item.category === activeCategory) &&
+        (!query.trim() || item.title.toLowerCase().includes(query.toLowerCase()))
+    );
+  }, [recentFeed, activeCategory, query]);
 
   return (
     <div className="browse-page">
@@ -197,7 +271,7 @@ const Browse = () => {
         </button>
       </header>
 
-      {/* ── SEARCH + FILTERS (wrapped in a div on desktop for inline layout) ── */}
+      {/* ── SEARCH + FILTERS ── */}
       <div className="browse-top-controls">
         <div className="browse-search">
           <Search size={15} />
@@ -209,7 +283,7 @@ const Browse = () => {
         </div>
 
         <div className="browse-filters">
-          {CATEGORIES.map((cat) => (
+          {categories.map((cat) => (
             <button
               key={cat}
               className={cat === activeCategory ? "active" : ""}
@@ -222,62 +296,63 @@ const Browse = () => {
       </div>
 
       {/* ── FEATURED HERO ── */}
-      <div
-        className="browse-featured"
-        onClick={() => navigate("/testimony/t001")}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => e.key === "Enter" && navigate("/testimony/t001")}
-        aria-label="Featured: Doctors Said It Was Impossible"
-      >
-        {/* decorative handled by CSS ::before */}
-        <div className="featured-scrim" />
+      {featured && (
+        <div
+          className="browse-featured"
+          onClick={() => navigate(`/testimony/${featured.id}`)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => e.key === "Enter" && navigate(`/testimony/${featured.id}`)}
+          aria-label={`Featured: ${featured.title}`}
+        >
+          <div className="featured-scrim" />
 
-        <div className="featured-play-btn" aria-hidden="true">
-          <Play size={22} fill="currentColor" />
-        </div>
+          <div className="featured-play-btn" aria-hidden="true">
+            <Play size={22} fill="currentColor" />
+          </div>
 
-        <div className="featured-overlay">
-          <p className="featured-eyebrow">Featured Story</p>
-          <h2>"Doctors Said It Was Impossible — But God Had the Final Word"</h2>
-          <div className="featured-meta">
-            <span>Sister Mary Okonkwo</span>
-            <span className="featured-meta-divider">·</span>
-            <span>Lagos, Nigeria</span>
-            <span className="featured-meta-divider">·</span>
-            <span>Healing</span>
+          <div className="featured-overlay">
+            <p className="featured-eyebrow">Featured Story</p>
+            <h2>"{featured.title}"</h2>
+            <div className="featured-meta">
+              <span>{featured.user?.name || "Anonymous"}</span>
+              <span className="featured-meta-divider">·</span>
+              <span>{featured.country}</span>
+              <span className="featured-meta-divider">·</span>
+              <span>{featured.category?.name}</span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* ── OTT ROWS ── */}
-      {filteredRows.map((row) => (
-        <section key={row.title} className="browse-section">
-          <div className="section-header">
-            <h3>{row.title}</h3>
-            <button
-              className="section-see-all"
-              onClick={() => navigate("/browse")}
-            >
-              See all →
-            </button>
-          </div>
+      {loading ? (
+        <div style={{ textAlign: "center", padding: "40px" }}><h3>Loading testimonies...</h3></div>
+      ) : filteredRows.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "40px" }}><p>No testimonies found.</p></div>
+      ) : (
+        filteredRows.map((row) => (
+          <section key={row.title} className="browse-section">
+            <div className="section-header">
+              <h3>{row.title}</h3>
+            </div>
 
-          <div className="row-scroll">
-            {row.items.map((item) => (
-              <PosterCard
-                key={item.id}
-                item={item}
-                category={row.category}
-                navigate={navigate}
-              />
-            ))}
-          </div>
-        </section>
-      ))}
+            <div className="row-scroll">
+              {row.items.map((item) => (
+                <PosterCard
+                  key={item.id}
+                  item={item}
+                  category={row.category}
+                  navigate={navigate}
+                />
+              ))}
+            </div>
+          </section>
+        ))
+      )}
 
       {/* ── RECENT FEED ── */}
-      {filteredFeed.length > 0 && (
+      {!loading && filteredFeed.length > 0 && (
         <section className="recent-feed">
           <div className="section-header recent-feed-header">
             <h3>Recent Uploads</h3>

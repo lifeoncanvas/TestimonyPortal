@@ -1,7 +1,6 @@
 // MyTestimonies.jsx
 // Route: /my-testimonies
 // Linked from Profile page via the "Testimonies" row.
-// All API calls are commented out — mock data is active.
 
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router";
@@ -10,61 +9,21 @@ import {
   MoreHorizontal, Edit3, Trash2, Share2, XCircle,
 } from "lucide-react";
 import BottomNav from "../../Sections/BottomNav/BottomNav";
+import api from "../../services/axiosConfig";
 import "./styles.css";
 
-// ─── Mock data ────────────────────────────────────────────────────────────────
-// TODO: replace with GET /api/testimonies/mine
+const TAG_STYLES = {
+  "Healing Streams":          { bg: "#dcccf4", color: "#5a3d8a", accent: "#9b7fd4" },
+  "Partnership":              { bg: "#f6d7be", color: "#8a5a2a", accent: "#e0945a" },
+  "Healing to the Nations":   { bg: "#d4e8d4", color: "#2a6b3a", accent: "#5aaa6a" },
+  "Magazines":                { bg: "#e8d5b0", color: "#6b4a1a", accent: "#c9a96e" },
+  "Prayer Clouds":            { bg: "#e0f0f8", color: "#1a5a7a", accent: "#5ba2c4" },
+  "Crusades":                 { bg: "#ffe4d4", color: "#8a3a1a", accent: "#e46f48" },
+  "Pray with Me":             { bg: "#f3d8e4", color: "#8a3a5a", accent: "#c45b8a" },
+  "Heralds":                  { bg: "#fef3c7", color: "#92610a", accent: "#e4b448" },
+};
 
-const MOCK_TESTIMONIES = [
-  {
-    id: "s005",
-    tag: "Faith",
-    tagBg: "#e8d5b0",
-    tagColor: "#6b4a1a",
-    accentColor: "#c9a96e",
-    title: "I was free from addiction before I even finished praying",
-    date: "June 3, 2025",
-    status: "approved",
-    views: 4200,
-    likes: 892,
-  },
-  {
-    id: "s006",
-    tag: "Healing",
-    tagBg: "#dcccf4",
-    tagColor: "#5a3d8a",
-    accentColor: "#9b7fd4",
-    title: "The doctor called it a spontaneous remission. I call it God.",
-    date: "May 17, 2025",
-    status: "approved",
-    views: 1800,
-    likes: 341,
-  },
-  {
-    id: "s007",
-    tag: "Provision",
-    tagBg: "#f6d7be",
-    tagColor: "#8a5a2a",
-    accentColor: "#e0945a",
-    title: "Lost everything in the fire. Had a new home in 30 days.",
-    date: "Aug 2, 2025",
-    status: "pending",
-    views: null,
-    likes: null,
-  },
-  {
-    id: "s008",
-    tag: "Salvation",
-    tagBg: "#d4e8d4",
-    tagColor: "#2a6b3a",
-    accentColor: "#5aaa6a",
-    title: "My father gave his life to Christ on his hospital bed. We thought we were losing him.",
-    date: "Mar 10, 2025",
-    status: "approved",
-    views: 6100,
-    likes: 1420,
-  },
-];
+const getTagStyle = (cat) => TAG_STYLES[cat] || { bg: "#e8d5b0", color: "#6b4a1a", accent: "#c9a96e" };
 
 // Filter options
 const FILTERS = [
@@ -120,15 +79,13 @@ function CardMenu({ testimony, onDelete, onShare }) {
             <Share2 size={14} /> Share
           </button>
 
-          {testimony.status === "approved" && (
-            <button
-              className="mt-dropdown-item"
-              role="menuitem"
-              onClick={(e) => { e.stopPropagation(); setOpen(false); navigate(`/upload?edit=${testimony.id}`); }}
-            >
-              <Edit3 size={14} /> Edit
-            </button>
-          )}
+          <button
+            className="mt-dropdown-item"
+            role="menuitem"
+            onClick={(e) => { e.stopPropagation(); setOpen(false); navigate(`/upload?edit=${testimony.id}`); }}
+          >
+            <Edit3 size={14} /> Edit
+          </button>
 
           <div className="mt-dropdown-divider" />
 
@@ -221,9 +178,43 @@ function TestimonyCard({ testimony, onDelete, onShare }) {
 // ─── MyTestimonies page ────────────────────────────────────────────────────────
 export default function MyTestimonies() {
   const navigate  = useNavigate();
-  const [items,   setItems]   = useState(MOCK_TESTIMONIES);
+  const [items,   setItems]   = useState([]);
   const [filter,  setFilter]  = useState("all");
   const [scrolled, setScrolled] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch user testimonies on mount
+  useEffect(() => {
+    fetchMyTestimonies();
+  }, []);
+
+  const fetchMyTestimonies = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get("/api/users/me/testimonies");
+      // Map API DTO to expected frontend schema
+      const mapped = (res.data.content || []).map((t) => {
+        const style = getTagStyle(t.categoryName || "Healing Streams");
+        return {
+          id: t.id,
+          title: t.title,
+          status: t.status.toLowerCase(),
+          tag: t.categoryName || "Healing Streams",
+          tagBg: style.bg,
+          tagColor: style.color,
+          accentColor: style.accent,
+          views: t.viewCount,
+          likes: t.likeCount,
+          date: t.createdAt ? new Date(t.createdAt).toLocaleDateString() : "Just now",
+        };
+      });
+      setItems(mapped);
+    } catch (err) {
+      console.error("Error fetching my testimonies:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Sticky header shadow on scroll
   useEffect(() => {
@@ -235,11 +226,14 @@ export default function MyTestimonies() {
   }, []);
 
   // Delete a testimony
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (!window.confirm("Delete this testimony? This can't be undone.")) return;
-    setItems((prev) => prev.filter((t) => t.id !== id));
-    // TODO: DELETE /api/testimonies/{id}
-    // fetch(`/api/testimonies/${id}`, { method: "DELETE" });
+    try {
+      await api.delete(`/api/testimonies/${id}`);
+      setItems((prev) => prev.filter((t) => t.id !== id));
+    } catch (err) {
+      alert("Failed to delete testimony: " + (err.response?.data?.message || err.message));
+    }
   };
 
   // Share a testimony
@@ -251,7 +245,6 @@ export default function MyTestimonies() {
     } else {
       navigator.clipboard?.writeText(url);
     }
-    // TODO: POST /api/testimonies/{id}/share  (track share count)
   };
 
   // Derived: filtered list + stats
@@ -316,7 +309,11 @@ export default function MyTestimonies() {
 
       {/* ── Card list ── */}
       <div className="mt-list">
-        {filtered.length === 0 ? (
+        {loading ? (
+          <div className="mt-empty">
+            <h3>Loading...</h3>
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="mt-empty">
             <div className="mt-empty-icon">✦</div>
             <h3>Nothing here yet</h3>
@@ -352,4 +349,4 @@ export default function MyTestimonies() {
       <BottomNav />
     </div>
   );
-}
+}

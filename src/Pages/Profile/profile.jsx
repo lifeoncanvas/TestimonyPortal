@@ -1,125 +1,195 @@
 // Profile.jsx
-// "Testimonies" tab removed — now lives at /my-testimonies (MyTestimonies.jsx)
-// Tabs remaining: Saved · Analytics · Notifications
+// Route: /profile
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import {
   ChevronLeft, Bell, Settings, Camera, Heart, Bookmark,
-  Eye, Share2, TrendingUp, CheckCircle, Clock, ChevronRight,
+  Eye, Share2, TrendingUp, CheckCircle, ChevronRight,
   LogOut, Edit3, Award, FileText,
 } from "lucide-react";
 import BottomNav from "../../Sections/BottomNav/BottomNav";
+import api from "../../services/axiosConfig";
 import "./styles.css";
 
-// ─── Mock data ────────────────────────────────────────────────────────────────
-
-const USER = {
-  initials: "MI",
-  name: "Michael Ihejirika",
-  handle: "@michael.i",
-  church: "Living Faith Church",
-  location: "Port Harcourt, Nigeria",
-  bio: "Sharing what God has done, so faith rises in others. Delivered. Restored. Grateful.",
-  joinDate: "Member since March 2024",
-  followers: 1240,
-  following: 83,
-  testimonyCount: 4,   // kept in sync with MyTestimonies mock
-  avatar: null,
+const TAG_STYLES = {
+  "Healing Streams":          { bg: "#dcccf4", color: "#5a3d8a" },
+  "Partnership":              { bg: "#f6d7be", color: "#8a5a2a" },
+  "Healing to the Nations":   { bg: "#d4e8d4", color: "#2a6b3a" },
+  "Magazines":                { bg: "#e8d5b0", color: "#6b4a1a" },
+  "Prayer Clouds":            { bg: "#e0f0f8", color: "#1a5a7a" },
+  "Crusades":                 { bg: "#ffe4d4", color: "#8a3a1a" },
+  "Pray with Me":             { bg: "#f3d8e4", color: "#8a3a5a" },
+  "Heralds":                  { bg: "#fef3c7", color: "#92610a" },
 };
 
-const ANALYTICS = [
-  { icon: <Eye size={18} />,       value: "24.6K", label: "Total Views", color: "#dcccf4", text: "#5a3d8a" },
-  { icon: <Heart size={18} />,     value: "3.2K",  label: "Total Likes", color: "#f3d8e4", text: "#8a3a5a" },
-  { icon: <Share2 size={18} />,    value: "892",   label: "Shares",      color: "#d4e8d4", text: "#2a6b3a" },
-  { icon: <TrendingUp size={18} />, value: "12",   label: "Trending",    color: "#f6d7be", text: "#8a5a2a" },
-];
-
-// Reused for analytics breakdown — keep consistent with MyTestimonies mock
-const MY_TESTIMONIES_PREVIEW = [
-  {
-    id: "s005",
-    tag: "Faith",      tagBg: "#e8d5b0", tagColor: "#6b4a1a",
-    title: "I was free from addiction before I even finished praying",
-    status: "approved", views: "4.2K", likes: 892,
-  },
-  {
-    id: "s006",
-    tag: "Healing",    tagBg: "#dcccf4", tagColor: "#5a3d8a",
-    title: "The doctor called it a spontaneous remission. I call it God.",
-    status: "approved", views: "1.8K", likes: 341,
-  },
-  {
-    id: "s008",
-    tag: "Salvation",  tagBg: "#d4e8d4", tagColor: "#2a6b3a",
-    title: "My father gave his life to Christ on his hospital bed.",
-    status: "approved", views: "6.1K", likes: 1420,
-  },
-];
-
-const SAVED = [
-  {
-    id: "t001",
-    tag: "Healing",     tagBg: "#dcccf4", tagColor: "#5a3d8a",
-    title: "Doctors Said It Was Impossible — But God Had the Final Word",
-    author: "Sister Mary Okonkwo", likes: 2847,
-  },
-  {
-    id: "t004",
-    tag: "Restoration", tagBg: "#d4e8d4", tagColor: "#2a6b3a",
-    title: "After 11 years, my family is whole again",
-    author: "Grace O.", likes: 4512,
-  },
-  {
-    id: "t002",
-    tag: "Provision",   tagBg: "#f6d7be", tagColor: "#8a5a2a",
-    title: "Debt cleared overnight after prayer",
-    author: "Emmanuel K.", likes: 1830,
-  },
-];
-
-const NOTIFICATIONS = [
-  {
-    id: "n1", icon: "❤️", bg: "#f3d8e4",
-    text: "Brother Taiwo and 84 others liked your testimony.",
-    time: "2h ago", unread: true,
-  },
-  {
-    id: "n2", icon: "💬", bg: "#dcccf4",
-    text: "Pastor Joshua A. commented: \"Shared this in Sunday service. The whole congregation was on their feet.\"",
-    time: "3h ago", unread: true,
-  },
-  {
-    id: "n3", icon: "🙏", bg: "#d4e8d4",
-    text: "341 people joined in prayer for your testimony this week.",
-    time: "1d ago", unread: false,
-  },
-  {
-    id: "n4", icon: "✨", bg: "#f6d7be",
-    text: "Your story is trending in the Healing category.",
-    time: "2d ago", unread: false,
-  },
-  {
-    id: "n5", icon: "🏆", bg: "#e8d5b0",
-    text: "Your testimony reached 4,000 views — a new milestone!",
-    time: "3d ago", unread: false,
-  },
-];
+const getTagStyle = (cat) => TAG_STYLES[cat] || { bg: "#e8d5b0", color: "#6b4a1a" };
 
 const TABS = ["Saved", "Analytics", "Notifications"];
 
-// ─── Profile page ──────────────────────────────────────────────────────────────
 export default function Profile() {
   const navigate = useNavigate();
-  const [activeTab,      setActiveTab]      = useState("Saved");
-  const [editMode,       setEditMode]       = useState(false);
-  const [bio,            setBio]            = useState(USER.bio);
-  const [notifications,  setNotifications]  = useState(NOTIFICATIONS);
+  const [activeTab, setActiveTab] = useState("Saved");
+  const [editMode, setEditMode] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const unreadCount = notifications.filter((n) => n.unread).length;
+  // Profile data state
+  const [user, setUser] = useState({
+    id: null,
+    name: "",
+    email: "",
+    avatarUrl: "",
+    church: "",
+    zone: "",
+    country: "",
+    role: "",
+    createdAt: "",
+  });
 
-  function markAllRead() {
-    setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })));
+  // Edited form state
+  const [form, setForm] = useState({
+    name: "",
+    church: "",
+    zone: "",
+    country: "",
+    avatarUrl: "",
+  });
+
+  // Saved testimonies
+  const [saved, setSaved] = useState([]);
+  
+  // Analytics
+  const [analytics, setAnalytics] = useState({
+    totalViews: 0,
+    totalLikes: 0,
+    totalShares: 0,
+    totalTestimonies: 0,
+  });
+
+  // Notifications
+  const [notifications, setNotifications] = useState([]);
+
+  useEffect(() => {
+    fetchProfileData();
+  }, []);
+
+  const fetchProfileData = async () => {
+    try {
+      setLoading(true);
+      // Fetch user profile
+      const userRes = await api.get("/api/users/me");
+      setUser(userRes.data);
+      setForm({
+        name: userRes.data.name || "",
+        church: userRes.data.church || "",
+        zone: userRes.data.zone || "",
+        country: userRes.data.country || "",
+        avatarUrl: userRes.data.avatarUrl || "",
+      });
+
+      // Fetch analytics
+      try {
+        const analyticsRes = await api.get("/api/users/me/analytics");
+        setAnalytics(analyticsRes.data);
+      } catch (err) {
+        console.error("Error loading analytics:", err);
+      }
+
+      // Fetch saved testimonies
+      try {
+        const savedRes = await api.get("/api/users/me/saved");
+        const mappedSaved = (savedRes.data.content || []).map((t) => {
+          const style = getTagStyle(t.categoryName || "Healing Streams");
+          return {
+            id: t.id,
+            title: t.title,
+            tag: t.categoryName || "Healing Streams",
+            tagBg: style.bg,
+            tagColor: style.color,
+            author: t.user?.name || "Anonymous",
+            likes: t.likeCount || 0,
+          };
+        });
+        setSaved(mappedSaved);
+      } catch (err) {
+        console.error("Error loading saved testimonies:", err);
+      }
+
+      // Fetch notifications
+      try {
+        const notifRes = await api.get("/api/notifications");
+        setNotifications(notifRes.data || []);
+      } catch (err) {
+        console.error("Error loading notifications:", err);
+      }
+
+    } catch (err) {
+      console.error("Error fetching profile details:", err);
+      // If error (e.g. unauthenticated), redirect to login
+      navigate("/login");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    try {
+      const res = await api.put("/api/users/me", form);
+      setUser(res.data);
+      setEditMode(false);
+    } catch (err) {
+      alert("Failed to update profile: " + (err.response?.data?.message || err.message));
+    }
+  };
+
+  const handleUnsave = async (e, testimonyId) => {
+    e.stopPropagation();
+    try {
+      await api.delete(`/api/testimonies/${testimonyId}/save`);
+      setSaved((prev) => prev.filter((s) => s.id !== testimonyId));
+    } catch (err) {
+      alert("Failed to unsave: " + (err.response?.data?.message || err.message));
+    }
+  };
+
+  const markAllRead = async () => {
+    try {
+      const unread = notifications.filter((n) => !n.isRead);
+      await Promise.all(unread.map((n) => api.post(`/api/notifications/${n.id}/read`)));
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    } catch (err) {
+      console.error("Error marking read:", err);
+    }
+  };
+
+  const initials = user.name
+    ? user.name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase()
+    : "U";
+
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
+
+  const joinDate = user.createdAt
+    ? `Member since ${new Date(user.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long' })}`
+    : "Member";
+
+  const analyticsCards = [
+    { icon: <Eye size={18} />,       value: analytics.totalViews, label: "Total Views", color: "#dcccf4", text: "#5a3d8a" },
+    { icon: <Heart size={18} />,     value: analytics.totalLikes,  label: "Total Likes", color: "#f3d8e4", text: "#8a3a5a" },
+    { icon: <Share2 size={18} />,    value: analytics.totalShares,   label: "Shares",      color: "#d4e8d4", text: "#2a6b3a" },
+    { icon: <TrendingUp size={18} />, value: analytics.totalTestimonies,   label: "Stories",    color: "#f6d7be", text: "#8a5a2a" },
+  ];
+
+  if (loading) {
+    return (
+      <div className="profile-page" style={{ justifyContent: "center", alignItems: "center", display: "flex", height: "100vh" }}>
+        <h3>Loading Account Info...</h3>
+      </div>
+    );
   }
 
   return (
@@ -140,9 +210,11 @@ export default function Profile() {
             <Bell size={18} />
             {unreadCount > 0 && <span className="notif-dot">{unreadCount}</span>}
           </button>
-          <button className="profile-icon-btn" aria-label="Settings" onClick={() => navigate("/admin")}>
-            <Settings size={18} />
-          </button>
+          {user.role === "ADMIN" && (
+            <button className="profile-icon-btn" aria-label="Settings" onClick={() => navigate("/admin")}>
+              <Settings size={18} />
+            </button>
+          )}
         </div>
       </header>
 
@@ -150,9 +222,9 @@ export default function Profile() {
       <section className="profile-card">
         <div className="profile-avatar-wrap">
           <div className="profile-avatar">
-            {USER.avatar
-              ? <img src={USER.avatar} alt={USER.name} />
-              : <span>{USER.initials}</span>
+            {user.avatarUrl
+              ? <img src={user.avatarUrl} alt={user.name} />
+              : <span>{initials}</span>
             }
           </div>
           <button className="profile-camera-btn" aria-label="Change photo" onClick={() => document.getElementById("avatar-upload")?.click()}>
@@ -163,63 +235,76 @@ export default function Profile() {
 
         <div className="profile-identity">
           {editMode ? (
-            <input
-              className="profile-name-input"
-              defaultValue={USER.name}
-              autoFocus
-            />
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px", width: "100%", padding: "10px" }}>
+              <input
+                className="profile-name-input"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                placeholder="Full Name"
+              />
+              <input
+                className="profile-name-input"
+                value={form.church}
+                onChange={(e) => setForm({ ...form, church: e.target.value })}
+                placeholder="Church"
+              />
+              <input
+                className="profile-name-input"
+                value={form.zone}
+                onChange={(e) => setForm({ ...form, zone: e.target.value })}
+                placeholder="Zone"
+              />
+              <input
+                className="profile-name-input"
+                value={form.country}
+                onChange={(e) => setForm({ ...form, country: e.target.value })}
+                placeholder="Country"
+              />
+            </div>
           ) : (
-            <h1 className="profile-name">{USER.name}</h1>
+            <>
+              <h1 className="profile-name">{user.name}</h1>
+              <p className="profile-handle">{user.email}</p>
+              <p className="profile-sub">{user.church} · {user.zone} · {user.country}</p>
+            </>
           )}
-          <p className="profile-handle">{USER.handle}</p>
-          <p className="profile-sub">{USER.church} · {USER.location}</p>
         </div>
 
-        {editMode ? (
-          <textarea
-            className="profile-bio-input"
-            value={bio}
-            onChange={(e) => setBio(e.target.value)}
-            rows={3}
-          />
-        ) : (
-          <p className="profile-bio">{bio}</p>
-        )}
-
         {/* social counts */}
-        <div className="profile-social">
+        <div className="profile-social" style={{ marginTop: "15px" }}>
           <div className="profile-social-item">
-            <span className="profile-social-count">{USER.followers.toLocaleString()}</span>
-            <span className="profile-social-label">Followers</span>
+            <span className="profile-social-count">{analytics.totalViews}</span>
+            <span className="profile-social-label">Views</span>
           </div>
           <div className="profile-social-divider" />
           <div className="profile-social-item">
-            <span className="profile-social-count">{USER.following}</span>
-            <span className="profile-social-label">Following</span>
+            <span className="profile-social-count">{analytics.totalLikes}</span>
+            <span className="profile-social-label">Likes</span>
           </div>
           <div className="profile-social-divider" />
           <div className="profile-social-item">
-            <span className="profile-social-count">{USER.testimonyCount}</span>
+            <span className="profile-social-count">{analytics.totalTestimonies}</span>
             <span className="profile-social-label">Testimonies</span>
           </div>
         </div>
 
         {/* actions */}
-        <div className="profile-actions">
-          <button
-            className={`profile-edit-btn${editMode ? " profile-save-btn" : ""}`}
-            onClick={() => setEditMode((e) => !e)}
-          >
-            {editMode
-              ? <><CheckCircle size={15} /> Save Profile</>
-              : <><Edit3 size={15} /> Edit Profile</>}
-          </button>
+        <div className="profile-actions" style={{ marginTop: "15px" }}>
+          {editMode ? (
+            <button className="profile-edit-btn profile-save-btn" onClick={handleSaveProfile}>
+              <CheckCircle size={15} /> Save Profile
+            </button>
+          ) : (
+            <button className="profile-edit-btn" onClick={() => setEditMode(true)}>
+              <Edit3 size={15} /> Edit Profile
+            </button>
+          )}
           <button
             className="profile-share-btn"
             aria-label="Share profile"
             onClick={() => {
               const url = `${window.location.origin}/profile`;
-              if (navigator.share) navigator.share({ title: USER.name, url }).catch(() => {});
+              if (navigator.share) navigator.share({ title: user.name, url }).catch(() => {});
               else navigator.clipboard?.writeText(url);
             }}
           >
@@ -227,11 +312,10 @@ export default function Profile() {
           </button>
         </div>
 
-        <p className="profile-join">{USER.joinDate}</p>
+        <p className="profile-join" style={{ marginTop: "10px" }}>{joinDate}</p>
       </section>
 
       {/* ── MY TESTIMONIES NAV ROW ─────────────────────────────────────────── */}
-      {/* Taps through to the dedicated MyTestimonies page */}
       <button
         className="profile-nav-row"
         onClick={() => navigate("/my-testimonies")}
@@ -243,7 +327,7 @@ export default function Profile() {
           </div>
           <div>
             <p className="profile-nav-row-title">My Testimonies</p>
-            <p className="profile-nav-row-sub">{USER.testimonyCount} stories · tap to manage</p>
+            <p className="profile-nav-row-sub">{analytics.totalTestimonies} stories · tap to manage</p>
           </div>
         </div>
         <ChevronRight size={16} className="profile-nav-row-chevron" />
@@ -273,38 +357,42 @@ export default function Profile() {
           <div className="tab-saved">
             <div className="tab-section-header">
               <h2>Liked & Saved</h2>
-              <span className="tab-count">{SAVED.length} stories</span>
+              <span className="tab-count">{saved.length} stories</span>
             </div>
 
-            {SAVED.map((s) => (
-              <div
-                key={s.id}
-                className="saved-card"
-                onClick={() => navigate(`/testimony/${s.id}`)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => e.key === "Enter" && navigate(`/testimony/${s.id}`)}
-              >
-                <div className="saved-thumb" />
-                <div className="saved-body">
-                  <span className="story-tag" style={{ background: s.tagBg, color: s.tagColor }}>
-                    {s.tag}
-                  </span>
-                  <h3 className="saved-title">{s.title}</h3>
-                  <div className="saved-meta">
-                    <span>{s.author}</span>
-                    <span><Heart size={11} /> {s.likes.toLocaleString()}</span>
-                  </div>
-                </div>
-                <button
-                  className="saved-remove"
-                  aria-label="Remove from saved"
-                  onClick={(e) => e.stopPropagation()}
+            {saved.length === 0 ? (
+              <p style={{ textAlign: "center", padding: "20px", color: "var(--muted)", fontSize: "13px" }}>No saved stories yet.</p>
+            ) : (
+              saved.map((s) => (
+                <div
+                  key={s.id}
+                  className="saved-card"
+                  onClick={() => navigate(`/testimony/${s.id}`)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => e.key === "Enter" && navigate(`/testimony/${s.id}`)}
                 >
-                  <Bookmark size={16} fill="#c9a96e" color="#c9a96e" />
-                </button>
-              </div>
-            ))}
+                  <div className="saved-thumb" />
+                  <div className="saved-body">
+                    <span className="story-tag" style={{ background: s.tagBg, color: s.tagColor }}>
+                      {s.tag}
+                    </span>
+                    <h3 className="saved-title">{s.title}</h3>
+                    <div className="saved-meta">
+                      <span>{s.author}</span>
+                      <span><Heart size={11} /> {s.likes.toLocaleString()}</span>
+                    </div>
+                  </div>
+                  <button
+                    className="saved-remove"
+                    aria-label="Remove from saved"
+                    onClick={(e) => handleUnsave(e, s.id)}
+                  >
+                    <Bookmark size={16} fill="#c9a96e" color="#c9a96e" />
+                  </button>
+                </div>
+              ))
+            )}
           </div>
         )}
 
@@ -317,7 +405,7 @@ export default function Profile() {
             </div>
 
             <div className="analytics-grid">
-              {ANALYTICS.map((a, i) => (
+              {analyticsCards.map((a, i) => (
                 <div key={i} className="analytics-card" style={{ background: a.color }}>
                   <span className="analytics-icon" style={{ color: a.text }}>{a.icon}</span>
                   <p className="analytics-value" style={{ color: a.text }}>{a.value}</p>
@@ -326,37 +414,11 @@ export default function Profile() {
               ))}
             </div>
 
-            {/* Story breakdown — summary only; full list is on MyTestimonies page */}
-            <div className="analytics-section-head">
-              <h3 className="analytics-sub-title">Story Breakdown</h3>
-              <button
-                className="analytics-see-all"
-                onClick={() => navigate("/my-testimonies")}
-              >
-                See all →
-              </button>
-            </div>
-
-            {MY_TESTIMONIES_PREVIEW.map((t) => (
-              <div key={t.id} className="analytics-row">
-                <div className="analytics-row-left">
-                  <span className="story-tag" style={{ background: t.tagBg, color: t.tagColor, fontSize: "9px" }}>
-                    {t.tag}
-                  </span>
-                  <p className="analytics-row-title">{t.title}</p>
-                </div>
-                <div className="analytics-row-stats">
-                  <span><Eye size={11} /> {t.views}</span>
-                  <span><Heart size={11} /> {t.likes}</span>
-                </div>
-              </div>
-            ))}
-
-            <div className="achievement-card">
+            <div className="achievement-card" style={{ marginTop: "20px" }}>
               <Award size={22} color="#c9a96e" />
               <div>
-                <p className="achievement-title">Top Voice — Faith Category</p>
-                <p className="achievement-sub">Your testimonies reached 4,000+ views this month</p>
+                <p className="achievement-title">Faith & Testimony Impact</p>
+                <p className="achievement-sub">Thank you for sharing your testimonies to build faith globally!</p>
               </div>
             </div>
           </div>
@@ -374,30 +436,31 @@ export default function Profile() {
               )}
             </div>
 
-            {notifications.map((n) => (
-              <div key={n.id} className={`notif-item${n.unread ? " notif-unread" : ""}`}>
-                <div className="notif-icon" style={{ background: n.bg }}>{n.icon}</div>
-                <div className="notif-body">
-                  <p className="notif-text">{n.text}</p>
-                  <span className="notif-time">{n.time}</span>
+            {notifications.length === 0 ? (
+              <p style={{ textAlign: "center", padding: "20px", color: "var(--muted)", fontSize: "13px" }}>No new notifications.</p>
+            ) : (
+              notifications.map((n) => (
+                <div key={n.id} className={`notif-item${!n.isRead ? " notif-unread" : ""}`}>
+                  <div className="notif-icon" style={{ background: "#f3d8e4" }}>🔔</div>
+                  <div className="notif-body">
+                    <p className="notif-text">{n.message}</p>
+                    <span className="notif-time">{new Date(n.createdAt).toLocaleDateString()}</span>
+                  </div>
+                  {!n.isRead && <span className="notif-pip" />}
                 </div>
-                {n.unread && <span className="notif-pip" />}
-              </div>
-            ))}
+              ))
+            )}
           </div>
         )}
       </div>
 
       {/* ── SETTINGS FOOTER ── */}
       <div className="profile-footer">
-        <button className="profile-footer-btn" onClick={() => navigate("/admin")}>
-          <Settings size={15} /> Account Settings
-          <ChevronRight size={14} className="ml-auto" />
-        </button>
         <button
           className="profile-footer-btn profile-logout"
           onClick={() => {
             localStorage.removeItem("token");
+            localStorage.removeItem("user");
             navigate("/login");
           }}
         >

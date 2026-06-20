@@ -1,122 +1,124 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
-import { ChevronLeft, Bell, Heart, MessageCircle, CheckCircle, Flame, Eye, X } from "lucide-react";
+import { ChevronLeft, Bell, X } from "lucide-react";
 import BottomNav from "../../Sections/BottomNav/BottomNav";
+import api from "../../services/axiosConfig";
 import "./styles.css";
-
-const NOTIFICATIONS_DATA = [
-  {
-    id: "n1",
-    type: "prayer",
-    icon: "🙏",
-    avatar: "BT",
-    avatarBg: "#ede5f8",
-    avatarColor: "#6b3fbf",
-    name: "Brother Taiwo",
-    message: "Prayed for your testimony about addiction.",
-    time: "2m ago",
-    read: false,
-    action: "View",
-  },
-  {
-    id: "n2",
-    type: "like",
-    icon: "❤️",
-    avatar: "SM",
-    avatarBg: "#fae3ed",
-    avatarColor: "#a03060",
-    name: "Sister Mary & 47 others",
-    message: "Liked your healing testimony.",
-    time: "18m ago",
-    read: false,
-    action: "View",
-  },
-  {
-    id: "n3",
-    type: "comment",
-    icon: "💬",
-    avatar: "PJ",
-    avatarBg: "#dff0df",
-    avatarColor: "#276b32",
-    name: "Pastor Joshua",
-    message: "Commented: 'Shared this in our Sunday service.'",
-    time: "45m ago",
-    read: true,
-    action: "Reply",
-  },
-  {
-    id: "n4",
-    type: "approved",
-    icon: "✓",
-    avatar: "MM",
-    avatarBg: "#f5ead8",
-    avatarColor: "#7a5218",
-    name: "My Miracle Story Team",
-    message: "Your prayer request has been approved and posted.",
-    time: "2h ago",
-    read: true,
-    action: "View",
-  },
-  {
-    id: "n5",
-    type: "trending",
-    icon: "🔥",
-    avatar: "MS",
-    avatarBg: "#faecd8",
-    avatarColor: "#9a5a1a",
-    name: "My Miracle Story",
-    message: "Your testimony is trending in the Healing category.",
-    time: "5h ago",
-    read: true,
-    action: "View",
-  },
-  {
-    id: "n6",
-    type: "milestone",
-    icon: "🏆",
-    avatar: "MMS",
-    avatarBg: "#daeef8",
-    avatarColor: "#185a80",
-    name: "My Miracle Story",
-    message: "Your story reached 4,000 views — a new milestone!",
-    time: "1d ago",
-    read: true,
-    action: "View",
-  },
-];
 
 const FILTERS = ["All", "Prayers", "Approvals", "Engagements"];
 
+function formatTime(dateString) {
+  if (!dateString) return "Just now";
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 1) return "Just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays}d ago`;
+}
+
+function getAvatarAndStyles(type) {
+  const t = type ? type.toUpperCase() : "LIKE";
+  if (t === "PRAYER") {
+    return { avatar: "🙏", bg: "#ede5f8", color: "#6b3fbf", name: "Prayer Wall", action: "View" };
+  } else if (t === "APPROVED" || t === "REJECTED") {
+    return { avatar: "✓", bg: "#f5ead8", color: "#7a5218", name: "System", action: "View" };
+  } else if (t === "COMMENT") {
+    return { avatar: "💬", bg: "#dff0df", color: "#276b32", name: "Commenter", action: "Reply" };
+  } else {
+    return { avatar: "❤️", bg: "#fae3ed", color: "#a03060", name: "Engagement", action: "View" };
+  }
+}
+
 export default function Notifications() {
   const navigate = useNavigate();
-  const [notifications, setNotifications] = useState(NOTIFICATIONS_DATA);
+  const [notifications, setNotifications] = useState([]);
   const [activeFilter, setActiveFilter] = useState("All");
   const [showClear, setShowClear] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
+
+  const fetchNotifications = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get("/api/notifications");
+      const mapped = (res.data || []).map((n) => {
+        const visual = getAvatarAndStyles(n.type);
+        return {
+          id: n.id,
+          type: n.type?.toLowerCase() || "like",
+          icon: visual.avatar,
+          avatar: visual.avatar,
+          avatarBg: visual.bg,
+          avatarColor: visual.color,
+          name: visual.name,
+          message: n.message,
+          time: formatTime(n.createdAt),
+          read: n.isRead,
+          action: visual.action,
+          referenceId: n.referenceId,
+        };
+      });
+      setNotifications(mapped);
+    } catch (err) {
+      console.error("Error fetching notifications:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
-  function markAsRead(id) {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-    );
+  async function markAsRead(id) {
+    try {
+      await api.post(`/api/notifications/${id}/read`);
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+      );
+    } catch (err) {
+      console.error("Error marking notification read:", err);
+    }
   }
 
-  function markAllAsRead() {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-    setShowClear(false);
+  async function markAllAsRead() {
+    try {
+      // Parallel requests to mark all read
+      const unread = notifications.filter((n) => !n.read);
+      await Promise.all(unread.map((n) => api.post(`/api/notifications/${n.id}/read`)));
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+      setShowClear(false);
+    } catch (err) {
+      console.error("Error marking all read:", err);
+    }
   }
 
   function deleteNotification(id) {
+    // Local delete since there is no backend delete endpoint
     setNotifications((prev) => prev.filter((n) => n.id !== id));
   }
 
   const filtered = notifications.filter((n) => {
     if (activeFilter === "All") return true;
     if (activeFilter === "Prayers") return n.type === "prayer";
-    if (activeFilter === "Approvals") return n.type === "approved";
+    if (activeFilter === "Approvals") return ["approved", "rejected"].includes(n.type);
     if (activeFilter === "Engagements") return ["like", "comment", "trending", "milestone"].includes(n.type);
     return true;
   });
+
+  const handleActionClick = (n) => {
+    if (n.referenceId) {
+      navigate(`/testimony/${n.referenceId}`);
+    } else {
+      navigate("/");
+    }
+  };
 
   return (
     <div className="notif-page">
@@ -174,7 +176,11 @@ export default function Notifications() {
 
       {/* NOTIFICATIONS LIST */}
       <section className="notif-list">
-        {filtered.length === 0 ? (
+        {loading ? (
+          <div className="notif-empty">
+            <h3>Loading...</h3>
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="notif-empty">
             <Bell size={40} opacity={0.3} />
             <p>No notifications yet.</p>
@@ -204,6 +210,7 @@ export default function Notifications() {
                 <button className="notif-action-btn" onClick={(e) => {
                   e.stopPropagation();
                   markAsRead(n.id);
+                  handleActionClick(n);
                 }}>
                   {n.action}
                 </button>
@@ -226,4 +233,4 @@ export default function Notifications() {
       <BottomNav />
     </div>
   );
-}
+}

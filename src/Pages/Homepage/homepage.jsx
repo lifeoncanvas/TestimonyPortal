@@ -144,31 +144,138 @@ const ALL_STORIES = [
     author: "Evangelist Rose", location: "Kampala",
     likes: 621, readTime: "6 min", wide: false,
   },
-];
+// ─── KEY TO ID MAPPING ─────────────────────────────────────────
+const KEY_TO_ID = {
+  "all": null,
+  "healing-streams": 1,
+  "partnership": 2,
+  "healing-nations": 3,
+  "magazines": 4,
+  "prayer-clouds": 5,
+  "crusades": 6,
+  "pray-with-me": 7,
+  "heralds": 8,
+};
 
 const STREAK_DAYS = [true, true, true, true, true, false, false];
 
 // ─── Homepage ─────────────────────────────────────────────────
+import { useEffect } from "react";
+import api from "../../services/axiosConfig";
+
+const TAG_STYLES = {
+  "Healing Streams":          { bg: "#dcccf4", color: "#5a3d8a" },
+  "Partnership":              { bg: "#f6d7be", color: "#8a5a2a" },
+  "Healing to the Nations":   { bg: "#d4e8d4", color: "#2a6b3a" },
+  "Magazines":                { bg: "#e8d5b0", color: "#6b4a1a" },
+  "Prayer Clouds":            { bg: "#e0f0f8", color: "#1a5a7a" },
+  "Crusades":                 { bg: "#ffe4d4", color: "#8a3a1a" },
+  "Pray with Me":             { bg: "#f3d8e4", color: "#8a3a5a" },
+  "Heralds":                  { bg: "#fef3c7", color: "#92610a" },
+};
+const getTagStyle = (cat) => TAG_STYLES[cat] || { bg: "#e8d5b0", color: "#6b4a1a" };
+
 export default function Homepage() {
   const [activeCategory, setActiveCategory] = useState("all");
   const navigate = useNavigate();
   const isLoggedIn = useIsLoggedIn();
 
-  // Filtered stories
-  const visibleStories = useMemo(() =>
-    activeCategory === "all"
-      ? ALL_STORIES
-      : ALL_STORIES.filter((s) => s.categoryKey === activeCategory),
-    [activeCategory]
-  );
+  const [trending, setTrending] = useState([]);
+  const [tod, setTod] = useState(null);
+  const [stories, setStories] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Filtered trending
-  const visibleTrending = useMemo(() =>
-    activeCategory === "all"
-      ? TRENDING
-      : TRENDING.filter((t) => t.categoryKey === activeCategory),
-    [activeCategory]
-  );
+  // Fetch trending & today's testimony on mount
+  useEffect(() => {
+    fetchTrendingAndToday();
+  }, []);
+
+  const fetchTrendingAndToday = async () => {
+    try {
+      const trendingRes = await api.get("/api/testimonies/trending");
+      setTrending(trendingRes.data || []);
+    } catch (err) {
+      console.error("Error fetching trending:", err);
+    }
+
+    try {
+      const todayRes = await api.get("/api/testimonies/today");
+      setTod(todayRes.data);
+    } catch (err) {
+      console.error("Error fetching today testimony:", err);
+      // Fallback: fetch any featured testimony
+      try {
+        const featuredRes = await api.get("/api/testimonies/featured");
+        if (featuredRes.data && featuredRes.data.length > 0) {
+          setTod(featuredRes.data[0]);
+        }
+      } catch (fErr) {
+        console.error("Error fetching fallback featured:", fErr);
+      }
+    }
+  };
+
+  // Fetch recent stories when category changes
+  useEffect(() => {
+    fetchRecentStories();
+  }, [activeCategory]);
+
+  const fetchRecentStories = async () => {
+    try {
+      setLoading(true);
+      const categoryId = KEY_TO_ID[activeCategory];
+      const params = categoryId ? { categoryId } : {};
+      const res = await api.get("/api/testimonies", { params });
+      setStories(res.data.content || []);
+    } catch (err) {
+      console.error("Error fetching recent stories:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Helper mappers
+  const mapTrendingItem = (t) => {
+    const categoryLabel = t.category?.name || "Miracle";
+    const firstMedia = t.media && t.media.length > 0
+      ? api.defaults.baseURL + t.media[0].fileUrl
+      : "https://images.unsplash.com/photo-1504439468489-c8920d796a29?w=800&q=80";
+    return {
+      id: t.id,
+      img: firstMedia,
+      categoryLabel,
+      title: t.title,
+      meta: `${t.user?.name || "Anonymous"} · ${t.country || ""}`,
+      views: t.viewCount || 0,
+      overlay: "linear-gradient(160deg,rgba(15,36,71,0.72) 0%,rgba(42,82,152,0.55) 100%)",
+    };
+  };
+
+  const mapStoryItem = (t, index) => {
+    const categoryName = t.category?.name || "Healing Streams";
+    const style = getTagStyle(categoryName);
+    const firstMedia = t.media && t.media.length > 0
+      ? api.defaults.baseURL + t.media[0].fileUrl
+      : "https://images.unsplash.com/photo-1516574187841-cb9cc2ca948b?w=600&q=80";
+    return {
+      id: t.id,
+      img: firstMedia,
+      tag: categoryName,
+      tagBg: style.bg,
+      tagColor: style.color,
+      title: t.title,
+      author: t.user?.name || "Anonymous",
+      location: t.country || "",
+      likes: t.likeCount || 0,
+      prayers: t.prayCount || 0,
+      views: t.viewCount || 0,
+      readTime: "3 min",
+      wide: index % 5 === 0
+    };
+  };
+
+  const mappedTrending = trending.map(mapTrendingItem);
+  const mappedStories = stories.map(mapStoryItem);
 
   function goToTestimony(id) { navigate(`/testimony/${id}`); }
 
@@ -273,9 +380,9 @@ export default function Homepage() {
             onClick={() => navigate("/browse")}>See all →</span>
         </div>
         <div className="carousel-wrap">
-          {visibleTrending.length === 0
+          {mappedTrending.length === 0
             ? <p className="feed-empty">No trending stories in this category yet.</p>
-            : visibleTrending.map((item) => (
+            : mappedTrending.map((item) => (
               <div
                 key={item.id}
                 className="carousel-card"
@@ -299,37 +406,40 @@ export default function Homepage() {
         </div>
 
         {/* TESTIMONY OF THE DAY */}
-        <div className="tod" onClick={() => goToTestimony("s005")}
-          role="button" tabIndex={0}
-          onKeyDown={(e) => e.key === "Enter" && goToTestimony("s005")}>
-          <img
-            src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=900&q=80"
-            alt="" className="tod-bg-img"
-          />
-          <div className="tod-inner">
-            <div className="tod-badge">✦ testimony of the day</div>
-            <h3 className="tod-title">
-              "I was free from addiction before I even finished praying"
-            </h3>
-            <p className="tod-excerpt">
-              For 8 years I was bound. I cried out that night not expecting
-              anything — and something shifted in my chest before I said amen...
-            </p>
-            <div className="tod-footer">
-              <div className="tod-author">
-                <div className="tod-avatar" aria-hidden="true">MI</div>
-                <div>
-                  <p className="tod-name">Michael Ihejirika</p>
-                  <p className="tod-location">Port Harcourt · Heralds</p>
+        {tod && (
+          <div className="tod" onClick={() => goToTestimony(tod.id)}
+            role="button" tabIndex={0}
+            onKeyDown={(e) => e.key === "Enter" && goToTestimony(tod.id)}>
+            <img
+              src={tod.media && tod.media.length > 0 ? api.defaults.baseURL + tod.media[0].fileUrl : "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=900&q=80"}
+              alt="" className="tod-bg-img"
+            />
+            <div className="tod-inner">
+              <div className="tod-badge">✦ testimony of the day</div>
+              <h3 className="tod-title">
+                "{tod.title}"
+              </h3>
+              <p className="tod-excerpt">
+                {tod.description ? tod.description.slice(0, 150) + "..." : ""}
+              </p>
+              <div className="tod-footer">
+                <div className="tod-author">
+                  <div className="tod-avatar" aria-hidden="true">
+                    {tod.user?.name ? tod.user.name.slice(0,2).toUpperCase() : "T"}
+                  </div>
+                  <div>
+                    <p className="tod-name">{tod.user?.name || "Anonymous"}</p>
+                    <p className="tod-location">{tod.country} · {tod.category?.name}</p>
+                  </div>
                 </div>
-              </div>
-              <div className="tod-stats">
-                <span>❤️ 892</span>
-                <span>🙏 341</span>
+                <div className="tod-stats">
+                  <span>❤️ {tod.likeCount}</span>
+                  <span>🙏 {tod.prayCount}</span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* MOBILE-ONLY: Category grid + prayer card */}
         <div className="mobile-only">
@@ -377,43 +487,45 @@ export default function Homepage() {
               onClick={() => navigate("/browse")}>See all →</span>
           </div>
           <div className="masonry-grid">
-            {visibleStories.length === 0
-              ? <p className="feed-empty" style={{ gridColumn: "1/-1" }}>
-                  No stories in this category yet.
-                </p>
-              : visibleStories.map((card) => (
-                <article
-                  key={card.id}
-                  className={`story-card${card.wide ? " full-width" : ""}`}
-                  onClick={() => goToTestimony(card.id)}
-                  role="button" tabIndex={0}
-                  onKeyDown={(e) => e.key === "Enter" && goToTestimony(card.id)}
-                >
-                  <div className="story-thumb">
-                    <img src={card.img} alt={card.title} className="story-thumb-img" />
-                    <div className="story-thumb-scrim" />
-                    <span className="story-read-time">{card.readTime}</span>
-                  </div>
-                  <div className="story-body">
-                    <span className="story-tag"
-                      style={{ background: card.tagBg, color: card.tagColor }}>
-                      {card.tag}
-                    </span>
-                    <h4 className="story-title">{card.title}</h4>
-                    <div className="story-meta">
-                      <div className="story-author-row">
-                        <span className="story-author-name">{card.author}</span>
-                        {card.location && <span className="story-location">· {card.location}</span>}
-                      </div>
-                      <div className="story-stats">
-                        <span>❤️ {card.likes}</span>
-                        {card.prayers && <span>🙏 {card.prayers}</span>}
-                        {card.views   && <span>👁 {card.views}</span>}
-                      </div>
+            {loading ? (
+              <p className="feed-empty" style={{ gridColumn: "1/-1" }}>Loading stories...</p>
+            ) : mappedStories.length === 0 ? (
+              <p className="feed-empty" style={{ gridColumn: "1/-1" }}>
+                No stories in this category yet.
+              </p>
+            ) : mappedStories.map((card) => (
+              <article
+                key={card.id}
+                className={`story-card${card.wide ? " full-width" : ""}`}
+                onClick={() => goToTestimony(card.id)}
+                role="button" tabIndex={0}
+                onKeyDown={(e) => e.key === "Enter" && goToTestimony(card.id)}
+              >
+                <div className="story-thumb">
+                  <img src={card.img} alt={card.title} className="story-thumb-img" />
+                  <div className="story-thumb-scrim" />
+                  <span className="story-read-time">{card.readTime}</span>
+                </div>
+                <div className="story-body">
+                  <span className="story-tag"
+                    style={{ background: card.tagBg, color: card.tagColor }}>
+                    {card.tag}
+                  </span>
+                  <h4 className="story-title">{card.title}</h4>
+                  <div className="story-meta">
+                    <div className="story-author-row">
+                      <span className="story-author-name">{card.author}</span>
+                      {card.location && <span className="story-location">· {card.location}</span>}
+                    </div>
+                    <div className="story-stats">
+                      <span>❤️ {card.likes}</span>
+                      {card.prayers && <span>🙏 {card.prayers}</span>}
+                      {card.views   && <span>👁 {card.views}</span>}
                     </div>
                   </div>
-                </article>
-              ))
+                </div>
+              </article>
+            ))
             }
           </div>
         </section>
@@ -423,4 +535,4 @@ export default function Homepage() {
       <BottomNav isLoggedIn={isLoggedIn} />
     </div>
   );
-}
+}
