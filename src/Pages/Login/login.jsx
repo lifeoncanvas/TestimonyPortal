@@ -43,14 +43,19 @@ export default function Login() {
   const handleKingschatAuth = async () => {
     setError("");
     setKingschatLoading(true);
-    const email = "kingschat_tester@kingschat.com";
+    const email = form.email || "kingschat_tester@kingschat.com";
     const password = "KingschatPassword123!";
+    const emailPrefix = email.split("@")[0];
+    const name = email === "kingschat_tester@kingschat.com"
+      ? "KingsChat Member"
+      : emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1);
+
     try {
       let res;
       try {
         // Try registering a default Kingschat user
         res = await api.post("/api/auth/register", {
-          name: "KingsChat Member",
+          name: name,
           email: email,
           password: password,
           church: "Christ Embassy Virtual Church",
@@ -75,6 +80,11 @@ export default function Login() {
       setKingschatLoading(false);
     }
   };
+
+  const kcEmail = form.email || "kingschat_tester@kingschat.com";
+  const kcName = kcEmail === "kingschat_tester@kingschat.com"
+    ? "KingsChat Member"
+    : kcEmail.split("@")[0].charAt(0).toUpperCase() + kcEmail.split("@")[0].slice(1);
 
   return (
     <div className="login-page">
@@ -142,8 +152,8 @@ export default function Login() {
                 <strong>My Miracle Story</strong> is requesting permission to access your KingsChat profile details:
               </p>
               <ul>
-                <li>✓ Full Name (KingsChat Member)</li>
-                <li>✓ Email address (kingschat_tester@kingschat.com)</li>
+                <li>✓ Full Name ({kcName})</li>
+                <li>✓ Email address ({kcEmail})</li>
                 <li>✓ Church & Zone details</li>
               </ul>
               <p className="kc-disclaimer">
