@@ -1,5 +1,6 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import "./styles.css";
+import api from "../../services/axiosConfig";
 
 // ─── SVG Icon Set ─────────────────────────────────────────────────────────────
 // Pure inline SVGs so no icon library dependency is needed.
@@ -87,22 +88,11 @@ const FORMATS = [
 ];
 
 // ─── API ──────────────────────────────────────────────────────────────────────
-// TODO: uncomment when backend is ready
-// const API = {
-//   categories: "/api/categories",
-//   submit:     "/api/testimonies",
-//   media:      (id) => `/api/testimonies/${id}/media`,
-// };
-
-// ── Mock data (remove once API is live) ──────────────────────────────────────
-const MOCK_CATEGORIES = [
-  { id: 1, name: "Healing" },
-  { id: 2, name: "Provision" },
-  { id: 3, name: "Marriage & Family" },
-  { id: 4, name: "Salvation" },
-  { id: 5, name: "Career & Business" },
-  { id: 6, name: "Protection" },
-];
+const API = {
+  categories: "/api/categories",
+  submit:     "/api/testimonies",
+  media:      (id) => `/api/testimonies/${id}/media`,
+};
 
 // ─── Step Definitions (dynamic based on format) ───────────────────────────────
 const stepsFor = (formatId) =>
@@ -252,11 +242,11 @@ function Waveform({ bars, live }) {
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-export default function UploadStepper({ onSuccess }) {
+export default function UploadStepper({ onSuccess, onSubmit }) {
   const [step,       setStep]       = useState(0);
   const [format,     setFormat]     = useState(null);
-  const [categories, setCategories] = useState(MOCK_CATEGORIES); // TODO: replace with [] and fetch from API
-  // const [loadingCats, setLoadingCats] = useState(true);        // TODO: uncomment when API is live
+  const [categories, setCategories] = useState([]);
+  const [loadingCats, setLoadingCats] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error,      setError]      = useState(null);
   const [testimonyId,setTestimonyId]= useState(null);
@@ -271,14 +261,18 @@ export default function UploadStepper({ onSuccess }) {
   const videoRec = useRecorder("video");
   const audioRec = useRecorder("audio");
 
-  // ── Fetch categories from API (uncomment when backend is ready)
-  // useEffect(() => {
-  //   fetch(API.categories)
-  //     .then((r) => r.json())
-  //     .then(setCategories)
-  //     .catch(() => setCategories([]))
-  //     .finally(() => setLoadingCats(false));
-  // }, []);
+  // ── Fetch categories from API on mount
+  useEffect(() => {
+    api.get(API.categories)
+      .then((res) => {
+        setCategories(res.data);
+      })
+      .catch((err) => {
+        console.error("Error fetching categories:", err);
+        setError("Could not load categories from backend.");
+      })
+      .finally(() => setLoadingCats(false));
+  }, []);
 
   const set    = (k, v) => setForm((p) => ({ ...p, [k]: v }));
   const isText = format?.id === "text";
@@ -312,31 +306,20 @@ export default function UploadStepper({ onSuccess }) {
     setError(null);
     setSubmitting(true);
     try {
-      // TODO: uncomment fetch block and remove mock once backend is ready
-      // const res = await fetch(API.submit, {
-      //   method: "POST",
-      //   headers: { "Content-Type": "application/json" },
-      //   body: JSON.stringify({
-      //     title:       form.title,
-      //     description: form.description,
-      //     categoryId:  Number(form.categoryId),
-      //     country:     form.country,
-      //     church:      form.church,
-      //     zone:        form.zone,
-      //   }),
-      // });
-      // if (!res.ok) throw new Error("Submission failed. Please try again.");
-      // const { id } = await res.json();
+      const res = await api.post(API.submit, {
+        title:       form.title,
+        description: form.description,
+        categoryId:  Number(form.categoryId),
+        country:     form.country,
+        church:      form.church,
+        zone:        form.zone,
+      });
 
-      // ── Mock: simulate network delay + fake ID ────────────────────────────
-      await new Promise((r) => setTimeout(r, 800));
-      const id = Math.floor(Math.random() * 9000) + 1000; // e.g. 4271
-      // ─────────────────────────────────────────────────────────────────────
-
+      const id = res.data.id;
       setTestimonyId(id);
       setStep(isText ? PREVIEW : S.MEDIA);
     } catch (e) {
-      setError(e.message);
+      setError(e.response?.data?.message || e.message || "Submission failed. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -353,27 +336,25 @@ export default function UploadStepper({ onSuccess }) {
       if (format?.id === "record-audio" && audioRec.blobFile)
         allFiles.push({ file: audioRec.blobFile, url: audioRec.blobUrl });
 
-      // TODO: uncomment loop and remove mock once backend is ready
-      // for (let i = 0; i < allFiles.length; i++) {
-      //   const fd = new FormData();
-      //   fd.append("file", allFiles[i].file);
-      //   const res = await fetch(API.media(testimonyId), { method: "POST", body: fd });
-      //   if (!res.ok) throw new Error(`Upload failed for file ${i + 1}.`);
-      //   setProgress(Math.round(((i + 1) / allFiles.length) * 100));
-      // }
-
-      // ── Mock: simulate upload progress ────────────────────────────────────
       const total = Math.max(allFiles.length, 1);
-      for (let i = 0; i < total; i++) {
-        await new Promise((r) => setTimeout(r, 600));
+      for (let i = 0; i < allFiles.length; i++) {
+        const fd = new FormData();
+        fd.append("file", allFiles[i].file);
+        
+        await api.post(API.media(testimonyId), fd, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
         setProgress(Math.round(((i + 1) / total) * 100));
       }
-      // ─────────────────────────────────────────────────────────────────────
 
       setStep(DONE);
-      onSuccess?.({ id: testimonyId, ...form });
+      const finalData = { id: testimonyId, ...form };
+      onSuccess?.(finalData);
+      onSubmit?.(finalData);
     } catch (e) {
-      setError(e.message);
+      setError(e.response?.data?.message || e.message || "Upload failed.");
     } finally {
       setSubmitting(false);
     }
