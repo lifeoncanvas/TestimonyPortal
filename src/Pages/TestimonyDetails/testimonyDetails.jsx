@@ -461,48 +461,35 @@ export default function TestimonyDetail() {
 
         <div className="td-divider" />
 
-        {/*
-          ── RELATED TESTIMONIES ────────────────────────────────
-          Mobile:  horizontal scroll row of cards
-          Desktop: vertical stack in the right sidebar column
-                   (CSS grid places .td-related-section in column 2,
-                    spanning all rows, sticky at top)
-
-          Each card shows a gradient thumbnail, title, and author.
-          Clicking navigates to that testimony's detail page.
-
-          TODO: Replace RELATED array with GET /api/testimonies?categoryId=x
-        */}
-        <div className="td-related-section">
-          <h2 className="td-section-title">Related Testimonies</h2>
-          <div className="td-related-scroll">
-            {RELATED.map((item) => (
-              <div
-                className="td-related-card"
-                key={item.id}
-                onClick={() => navigate(`/testimony/${item.id}`)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) =>
-                  e.key === "Enter" && navigate(`/testimony/${item.id}`)
-                }
-              >
-                {/* Gradient thumbnail — shows play icon for audio testimonies */}
+        {related.length > 0 && (
+          <div className="td-related-section">
+            <h2 className="td-section-title">Related Testimonies</h2>
+            <div className="td-related-scroll">
+              {related.map((item, idx) => (
                 <div
-                  className="td-r-thumb"
-                  style={{ background: THUMB_COLORS[item.thumb] }}
+                  className="td-related-card"
+                  key={item.id}
+                  onClick={() => navigate(`/testimony/${item.id}`)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => e.key === "Enter" && navigate(`/testimony/${item.id}`)}
                 >
-                  {item.mediaType === "audio"
-                    ? <Play size={20} color="rgba(255,255,255,0.7)" />
-                    : null
-                  }
+                  {/* Gradient thumbnail — shows play icon for audio testimonies */}
+                  <div
+                    className="td-r-thumb"
+                    style={{ background: THUMB_COLORS[idx % 3] }}
+                  >
+                    {item.media?.some(m => m.mediaType === "AUDIO") && (
+                      <Play size={20} color="rgba(255,255,255,0.7)" />
+                    )}
+                  </div>
+                  <p className="td-r-title">{item.title}</p>
+                  <p className="td-r-author">{item.user?.name} • {item.country}</p>
                 </div>
-                <p className="td-r-title">{item.title}</p>
-                <p className="td-r-author">{item.author}</p>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
       </div>{/* end .td-body */}
 

@@ -1,8 +1,9 @@
-import React from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router";
 import "./styles.css";
 import BottomNav from "../../Sections/BottomNav/BottomNav";
 import { Search, ChevronLeft, Eye, Heart, Play, BookOpen, Clock } from "lucide-react";
+import api from "../../services/axiosConfig";
 
 // ─── Category gradient map ────────────────────────────────────────────────────
 // Each category gets its own cover gradient so poster cards feel like
@@ -158,8 +159,7 @@ function FeedCard({ item, navigate }) {
 }
 
 // ─── Browse page ──────────────────────────────────────────────────────────────
-import { useState, useEffect, useMemo } from "react";
-import api from "../../services/axiosConfig";
+
 
 const Browse = () => {
   const navigate = useNavigate();

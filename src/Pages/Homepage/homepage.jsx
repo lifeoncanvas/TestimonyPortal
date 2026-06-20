@@ -1,7 +1,8 @@
 // Homepage.jsx
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router";
 import BottomNav from "../../Sections/BottomNav/BottomNav";
+import api from "../../services/axiosConfig";
 import "./styles.css";
 
 function useIsLoggedIn() {
@@ -144,6 +145,8 @@ const ALL_STORIES = [
     author: "Evangelist Rose", location: "Kampala",
     likes: 621, readTime: "6 min", wide: false,
   },
+];
+
 // ─── KEY TO ID MAPPING ─────────────────────────────────────────
 const KEY_TO_ID = {
   "all": null,
@@ -160,8 +163,7 @@ const KEY_TO_ID = {
 const STREAK_DAYS = [true, true, true, true, true, false, false];
 
 // ─── Homepage ─────────────────────────────────────────────────
-import { useEffect } from "react";
-import api from "../../services/axiosConfig";
+
 
 const TAG_STYLES = {
   "Healing Streams":          { bg: "#dcccf4", color: "#5a3d8a" },
