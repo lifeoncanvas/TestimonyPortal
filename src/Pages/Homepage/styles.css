@@ -64,6 +64,28 @@ img { display:block; }
   border: 2px solid var(--gold-light); object-fit: cover;
 }
 
+/* ── Header auth buttons (for guests) ── */
+.header-login-btn {
+  background: var(--navy); color: #fff; border: none;
+  border-radius: 999px; padding: 9px 20px;
+  font-size: 13px; font-weight: 700; letter-spacing: 0.3px;
+  transition: background 0.2s, transform 0.15s;
+  white-space: nowrap;
+}
+.header-login-btn:hover {
+  background: var(--navy-mid); transform: translateY(-1px);
+}
+.header-register-btn {
+  background: transparent; color: var(--navy); border: 1.5px solid var(--gold);
+  border-radius: 999px; padding: 8px 18px;
+  font-size: 13px; font-weight: 600; letter-spacing: 0.3px;
+  transition: background 0.2s, color 0.2s, transform 0.15s;
+  white-space: nowrap;
+}
+.header-register-btn:hover {
+  background: var(--gold); color: #fff; transform: translateY(-1px);
+}
+
 /* ── HERO ── */
 .hero {
   margin: 6px 16px 0;

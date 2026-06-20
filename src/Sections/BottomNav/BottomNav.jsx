@@ -1,8 +1,11 @@
 import { useNavigate, useLocation } from "react-router";
 
-export default function BottomNav() {
+export default function BottomNav({ isLoggedIn }) {
   const navigate = useNavigate();
   const location = useLocation();
+
+  // If not logged in, check from localStorage as fallback
+  const loggedIn = isLoggedIn !== undefined ? isLoggedIn : !!localStorage.getItem("token");
 
   const items = [
     {
@@ -21,21 +24,38 @@ export default function BottomNav() {
       key: "upload",
       icon: "+",
       label: "Share",
-      path: "/upload",
+      path: loggedIn ? "/upload" : "/login",
       center: true,
     },
-    {
-      key: "My Testimonies",
-      icon: "🙏",
-      label: "My Testimonies",
-      path: "/my-testimonies",
-    },
-    {
-      key: "profile",
-      icon: "👤",
-      label: "Profile",
-      path: "/profile",
-    },
+    ...(loggedIn
+      ? [
+          {
+            key: "My Testimonies",
+            icon: "🙏",
+            label: "My Testimonies",
+            path: "/my-testimonies",
+          },
+          {
+            key: "profile",
+            icon: "👤",
+            label: "Profile",
+            path: "/profile",
+          },
+        ]
+      : [
+          {
+            key: "login",
+            icon: "🔑",
+            label: "Login",
+            path: "/login",
+          },
+          {
+            key: "register",
+            icon: "📝",
+            label: "Register",
+            path: "/register",
+          },
+        ]),
   ];
 
   return (
@@ -67,4 +87,4 @@ export default function BottomNav() {
       )}
     </nav>
   );
-}
+}

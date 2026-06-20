@@ -4,6 +4,11 @@ import { useNavigate } from "react-router";
 import BottomNav from "../../Sections/BottomNav/BottomNav";
 import "./styles.css";
 
+function useIsLoggedIn() {
+  const token = localStorage.getItem("token");
+  return !!token;
+}
+
 // ─── NEW CATEGORIES ──────────────────────────────────────────
 const CATEGORIES = [
   { label: "All Stories",              key: "all" },
@@ -147,6 +152,7 @@ const STREAK_DAYS = [true, true, true, true, true, false, false];
 export default function Homepage() {
   const [activeCategory, setActiveCategory] = useState("all");
   const navigate = useNavigate();
+  const isLoggedIn = useIsLoggedIn();
 
   // Filtered stories
   const visibleStories = useMemo(() =>
@@ -173,11 +179,24 @@ export default function Homepage() {
       <header className="header">
         <div className="logo">My Miracle<span>Story</span></div>
         <div className="header-actions">
-          <button className="icon-btn" aria-label="Notifications"
-            onClick={() => navigate("/notifications")}>🔔</button>
-          <div className="avatar" onClick={() => navigate("/profile")} style={{ cursor: "pointer" }}>
-            <img src="https://i.pravatar.cc/100" alt="User profile" />
-          </div>
+          {isLoggedIn ? (
+            <>
+              <button className="icon-btn" aria-label="Notifications"
+                onClick={() => navigate("/notifications")}>🔔</button>
+              <div className="avatar" onClick={() => navigate("/profile")} style={{ cursor: "pointer" }}>
+                <img src="https://i.pravatar.cc/100" alt="User profile" />
+              </div>
+            </>
+          ) : (
+            <>
+              <button className="header-login-btn" onClick={() => navigate("/login")}>
+                Sign In
+              </button>
+              <button className="header-register-btn" onClick={() => navigate("/register")}>
+                Register
+              </button>
+            </>
+          )}
         </div>
       </header>
 
@@ -401,7 +420,7 @@ export default function Homepage() {
 
       </main>{/* end .main-feed */}
 
-      <BottomNav />
+      <BottomNav isLoggedIn={isLoggedIn} />
     </div>
   );
 }
