@@ -108,11 +108,12 @@ export default function Profile() {
       try {
         const savedRes = await api.get("/api/users/me/saved");
         const mappedSaved = (savedRes.data.content || []).map((t) => {
-          const style = getTagStyle(t.categoryName || "Healing Streams");
+          const catName = t.category?.name || "Healing Streams";
+          const style = getTagStyle(catName);
           return {
             id: t.id,
             title: t.title,
-            tag: t.categoryName || "Healing Streams",
+            tag: catName,
             tagBg: style.bg,
             tagColor: style.color,
             author: t.user?.name || "Anonymous",

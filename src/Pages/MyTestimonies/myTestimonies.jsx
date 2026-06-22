@@ -194,12 +194,13 @@ export default function MyTestimonies() {
       const res = await api.get("/api/users/me/testimonies");
       // Map API DTO to expected frontend schema
       const mapped = (res.data.content || []).map((t) => {
-        const style = getTagStyle(t.categoryName || "Healing Streams");
+        const catName = t.category?.name || "Healing Streams";
+        const style = getTagStyle(catName);
         return {
           id: t.id,
           title: t.title,
           status: t.status.toLowerCase(),
-          tag: t.categoryName || "Healing Streams",
+          tag: catName,
           tagBg: style.bg,
           tagColor: style.color,
           accentColor: style.accent,
