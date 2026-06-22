@@ -373,6 +373,7 @@
 @media(max-width: 600px) {
   .pw-stats {
     padding: 16px;
+    grid-template-columns: 1fr;
   }
   .pw-hero h1 {
     font-size: 22px;

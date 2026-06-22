@@ -759,3 +759,27 @@
   border-radius: 4px;
   transition: width 0.3s ease;
 }
+
+/* ─── Responsiveness Media Queries ────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .mms-root {
+    padding: 20px 12px 100px;
+  }
+  .mms-card {
+    padding: 20px 16px;
+  }
+  .mms-format-grid {
+    grid-template-columns: 1fr;
+  }
+  .mms-row {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  .mms-step-label {
+    font-size: 7.5px;
+    letter-spacing: 0.05em;
+  }
+  .mms-rec-timer {
+    font-size: 2rem;
+  }
+}
