@@ -15,6 +15,7 @@ import Analytics from "./Pages/Analytics/analytics";
 import AdminDashboard from "./Pages/AdminDashboard/adminDashboard";
 import AdminModeration from "./Pages/AdminModeration/adminModeration";
 import AdminCategories from "./Pages/AdminCategories/adminCategories";
+import PrayerWall from "./Pages/PrayerWall/prayerWall";
 
 function App() {
   return (
@@ -34,6 +35,7 @@ function App() {
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/admin/moderation" element={<AdminModeration />} />
         <Route path="/admin/categories" element={<AdminCategories />} />
+        <Route path="/prayers" element={<PrayerWall />} />
       </Routes>
     </BrowserRouter>
   );

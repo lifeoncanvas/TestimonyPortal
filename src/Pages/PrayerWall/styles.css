@@ -1,0 +1,383 @@
+/* Prayer Wall CSS Styling */
+
+.prayer-wall-page {
+  min-height: 100vh;
+  background: var(--bg);
+  padding-bottom: 90px; /* Space for BottomNav */
+  font-family: inherit;
+  color: var(--text);
+}
+
+/* TOP BAR */
+.pw-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: rgba(15, 36, 71, 0.85); /* Dark primary background matching site theme */
+  backdrop-filter: blur(10px);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  border-bottom: 1px solid var(--border);
+}
+
+.pw-topbar-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.01em;
+}
+
+.pw-icon-btn {
+  background: none;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.pw-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* HERO BANNER */
+.pw-hero {
+  position: relative;
+  background-image: linear-gradient(135deg, #0f2447 0%, #1c3d70 100%);
+  padding: 40px 24px;
+  text-align: center;
+  overflow: hidden;
+  border-bottom: 1px solid var(--border);
+}
+
+.pw-hero-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at 50% 50%, rgba(201, 169, 110, 0.15), transparent 60%);
+  pointer-events: none;
+}
+
+.pw-hero-content {
+  position: relative;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.pw-hero-eyebrow {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--gold);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  margin-bottom: 12px;
+}
+
+.pw-hero h1 {
+  font-size: 28px;
+  font-weight: 850;
+  line-height: 1.2;
+  color: #fff;
+  margin-bottom: 12px;
+  letter-spacing: -0.02em;
+}
+
+.pw-hero p {
+  font-size: 14px;
+  color: #e2e8f0;
+  line-height: 1.6;
+  font-style: italic;
+  font-weight: 300;
+}
+
+/* STATS SECTION */
+.pw-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding: 20px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.pw-stat-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg-card);
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.pw-stat-icon {
+  font-size: 24px;
+}
+
+.pw-stat-details h3 {
+  font-size: 20px;
+  font-weight: 800;
+  margin: 0;
+  color: var(--gold);
+}
+
+.pw-stat-details p {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 2px 0 0 0;
+  font-weight: 500;
+}
+
+/* FEED & GRID */
+.pw-feed {
+  padding: 0 20px 20px 20px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.pw-feed h2 {
+  font-size: 22px;
+  font-weight: 800;
+  margin: 20px 0 6px 0;
+  letter-spacing: -0.015em;
+}
+
+.pw-feed-sub {
+  font-size: 14px;
+  color: var(--muted);
+  margin-bottom: 24px;
+}
+
+.pw-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* CARDS */
+.pw-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.03);
+}
+
+.pw-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 20px -3px rgba(0, 0, 0, 0.06);
+  border-color: var(--gold-light);
+}
+
+.pw-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.pw-tag {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.pw-location {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.pw-card-title {
+  font-size: 18px;
+  font-weight: 750;
+  line-height: 1.3;
+  margin-bottom: 10px;
+  color: var(--title);
+  letter-spacing: -0.01em;
+}
+
+.pw-card-desc {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+.pw-card-author {
+  font-size: 13px;
+  color: var(--text);
+  margin-bottom: 16px;
+  font-weight: 500;
+}
+
+.pw-card-author strong {
+  font-weight: 600;
+}
+
+.pw-card-author span {
+  color: var(--muted);
+}
+
+/* ACTIONS */
+.pw-card-actions {
+  display: flex;
+  align-items: center;
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+  margin-bottom: 12px;
+}
+
+.pw-pray-btn {
+  background: var(--bg-card-hover);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pw-pray-btn:hover {
+  background: rgba(201, 169, 110, 0.1);
+  border-color: var(--gold);
+}
+
+.pw-pray-btn.prayed {
+  background: rgba(201, 169, 110, 0.15);
+  border-color: var(--gold);
+  color: var(--gold);
+  cursor: default;
+}
+
+.pw-pray-icon {
+  font-size: 14px;
+}
+
+.pw-count-badge {
+  background: var(--border);
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 9999px;
+  margin-left: 4px;
+  transition: all 0.2s;
+}
+
+.pw-pray-btn.prayed .pw-count-badge {
+  background: var(--gold);
+  color: #fff;
+}
+
+/* Micro-animation */
+.spin-pulse {
+  display: inline-block;
+  animation: pulse 0.5s ease-out;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.3);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* COMMENT / ENCOURAGEMENT BOX */
+.pw-comment-box {
+  background: var(--bg-card-hover);
+  border-radius: 10px;
+  padding: 8px 12px;
+}
+
+.pw-comment-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pw-comment-form input {
+  flex: 1;
+  background: none;
+  border: none;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text);
+  outline: none;
+  padding: 4px 0;
+}
+
+.pw-comment-form input::placeholder {
+  color: var(--muted);
+}
+
+.pw-comment-form button {
+  background: none;
+  border: none;
+  color: var(--gold);
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 4px 8px;
+  transition: opacity 0.2s;
+}
+
+.pw-comment-form button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* UTILITY VIEWS */
+.pw-loading, .pw-empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.pw-loading h3 {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+@media(max-width: 600px) {
+  .pw-stats {
+    padding: 16px;
+  }
+  .pw-hero h1 {
+    font-size: 22px;
+  }
+  .pw-feed {
+    padding: 0 16px 16px 16px;
+  }
+}

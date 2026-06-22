@@ -181,11 +181,23 @@ export default function Homepage() {
   const [activeCategory, setActiveCategory] = useState("all");
   const navigate = useNavigate();
   const isLoggedIn = useIsLoggedIn();
+  const [currentUser, setCurrentUser] = useState(null);
 
   const [trending, setTrending] = useState([]);
   const [tod, setTod] = useState(null);
   const [stories, setStories] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      try {
+        const u = JSON.parse(localStorage.getItem("user"));
+        setCurrentUser(u);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  }, [isLoggedIn]);
 
   // Fetch trending & today's testimony on mount
   useEffect(() => {
@@ -293,7 +305,7 @@ export default function Homepage() {
               <button className="icon-btn" aria-label="Notifications"
                 onClick={() => navigate("/notifications")}>🔔</button>
               <div className="avatar" onClick={() => navigate("/profile")} style={{ cursor: "pointer" }}>
-                <img src="https://i.pravatar.cc/100" alt="User profile" />
+                <img src={currentUser?.avatarUrl || "https://i.pravatar.cc/100"} alt="User profile" />
               </div>
             </>
           ) : (

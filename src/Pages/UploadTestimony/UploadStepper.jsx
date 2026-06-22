@@ -53,6 +53,15 @@ const Icon = {
       <circle cx="12" cy="12" r="10" /><path d="M12 8v8M8 12h8" />
     </svg>
   ),
+  Csv: () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="16" y1="13" x2="8" y2="13" />
+      <line x1="16" y1="17" x2="8" y2="17" />
+      <polyline points="10 9 9 9 8 9" />
+    </svg>
+  ),
 };
 
 // ─── Format Definitions ───────────────────────────────────────────────────────
@@ -85,6 +94,13 @@ const FORMATS = [
     desc: "Attach existing photos or videos",
     hasMedia: true,
   },
+  {
+    id: "bulk-csv",
+    Icon: Icon.Csv,
+    label: "Bulk Import (CSV)",
+    desc: "Upload a CSV file containing multiple testimonies",
+    hasMedia: false,
+  },
 ];
 
 // ─── API ──────────────────────────────────────────────────────────────────────
@@ -95,8 +111,15 @@ const API = {
 };
 
 // ─── Step Definitions (dynamic based on format) ───────────────────────────────
-const stepsFor = (formatId) =>
-  formatId === "text"
+const stepsFor = (formatId) => {
+  if (formatId === "bulk-csv") {
+    return [
+      { label: "Format",     icon: "◇" },
+      { label: "Upload CSV", icon: "✦" },
+      { label: "Done",       icon: "✧" },
+    ];
+  }
+  return formatId === "text"
     ? [
         { label: "Format",   icon: "◇" },
         { label: "Story",    icon: "✦" },
@@ -110,6 +133,7 @@ const stepsFor = (formatId) =>
         { label: "Preview",  icon: "◉" },
         { label: "Done",     icon: "✧" },
       ];
+};
 
 // step indices that work for both layouts
 const S = {
@@ -118,7 +142,7 @@ const S = {
   MEDIA:   2,   // only used by non-text formats
   // preview + done are offset by –1 for text-only
   preview: (isText) => (isText ? 2 : 3),
-  done:    (isText) => (isText ? 3 : 4),
+  done:    (isText, isBulk) => (isBulk ? 2 : isText ? 3 : 4),
 };
 
 // ─── useRecorder hook ─────────────────────────────────────────────────────────
@@ -241,17 +265,51 @@ function Waveform({ bars, live }) {
   );
 }
 
+function parseCSV(text) {
+  const lines = [];
+  let row = [""];
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    const next = text[i+1];
+
+    if (c === '"') {
+      if (inQuotes && next === '"') {
+        row[row.length - 1] += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (c === ',' && !inQuotes) {
+      row.push('');
+    } else if ((c === '\r' || c === '\n') && !inQuotes) {
+      if (c === '\r' && next === '\n') {
+        i++;
+      }
+      lines.push(row);
+      row = [''];
+    } else {
+      row[row.length - 1] += c;
+    }
+  }
+  if (row.length > 1 || row[0] !== '') {
+    lines.push(row);
+  }
+  return lines;
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function UploadStepper({ onSuccess, onSubmit }) {
   const [step,       setStep]       = useState(0);
   const [format,     setFormat]     = useState(null);
   const [categories, setCategories] = useState([]);
-  const [loadingCats, setLoadingCats] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error,      setError]      = useState(null);
   const [testimonyId,setTestimonyId]= useState(null);
   const [progress,   setProgress]   = useState(0);
   const [dragOver,   setDragOver]   = useState(false);
+  const [parsedStories, setParsedStories] = useState([]);
 
   const [form, setForm] = useState({
     title: "", categoryId: "", country: "", church: "", zone: "", description: "",
@@ -263,6 +321,17 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
 
   // ── Fetch categories from API on mount
   useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const zoneParam = searchParams.get("zone") || "";
+    const churchParam = searchParams.get("church") || "";
+    if (zoneParam || churchParam) {
+      setForm((prev) => ({
+        ...prev,
+        zone: prev.zone || zoneParam,
+        church: prev.church || churchParam,
+      }));
+    }
+
     api.get(API.categories)
       .then((res) => {
         setCategories(res.data);
@@ -271,14 +340,15 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
         console.error("Error fetching categories:", err);
         setError("Could not load categories from backend.");
       })
-      .finally(() => setLoadingCats(false));
+      .finally(() => {});
   }, []);
 
   const set    = (k, v) => setForm((p) => ({ ...p, [k]: v }));
   const isText = format?.id === "text";
+  const isBulk = format?.id === "bulk-csv";
   const steps  = stepsFor(format?.id);
   const PREVIEW = S.preview(isText);
-  const DONE    = S.done(isText);
+  const DONE    = S.done(isText, isBulk);
 
   const canContinueStory =
     form.title.trim() &&
@@ -355,6 +425,120 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
       onSubmit?.(finalData);
     } catch (e) {
       setError(e.response?.data?.message || e.message || "Upload failed.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleCsvUpload = (e) => {
+    setError(null);
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (!file.name.endsWith(".csv")) {
+      setError("Please upload a valid CSV file.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const text = event.target.result;
+        const rows = parseCSV(text);
+        if (rows.length < 2) {
+          setError("CSV file is empty or missing data rows.");
+          return;
+        }
+
+        const headers = rows[0].map(h => h.trim().toLowerCase());
+        const titleIdx = headers.indexOf("title");
+        const descIdx = headers.indexOf("description");
+        const catIdx = headers.indexOf("category");
+        const countryIdx = headers.indexOf("country");
+        const churchIdx = headers.indexOf("church");
+        const zoneIdx = headers.indexOf("zone");
+
+        if (titleIdx === -1 || descIdx === -1) {
+          setError("CSV must contain at least 'title' and 'description' columns.");
+          return;
+        }
+
+        const list = [];
+        for (let i = 1; i < rows.length; i++) {
+          const row = rows[i];
+          if (row.length < 2 || !row[titleIdx]?.trim()) continue;
+
+          const catName = catIdx !== -1 ? row[catIdx]?.trim() : "";
+          let catId = "";
+          if (catName) {
+            const matched = categories.find(
+              c => c.name.toLowerCase() === catName.toLowerCase()
+            );
+            if (matched) catId = matched.id;
+          }
+          if (!catId) {
+            const othersCat = categories.find(c => c.name.toLowerCase() === "others") || categories[0];
+            catId = othersCat ? othersCat.id : "";
+          }
+
+          list.push({
+            title: row[titleIdx]?.trim(),
+            description: row[descIdx]?.trim() || "",
+            categoryId: Number(catId),
+            categoryName: catName || "Others",
+            country: countryIdx !== -1 ? row[countryIdx]?.trim() : "",
+            church: churchIdx !== -1 ? row[churchIdx]?.trim() : "",
+            zone: zoneIdx !== -1 ? row[zoneIdx]?.trim() : "",
+          });
+        }
+
+        if (list.length === 0) {
+          setError("No valid testimony rows found in the CSV.");
+        } else {
+          setParsedStories(list);
+        }
+      } catch (err) {
+        setError("Failed to parse CSV file: " + err.message);
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const downloadCsvTemplate = () => {
+    const csvContent = "data:text/csv;charset=utf-8,title,description,category,country,church,zone\n"
+      + "\"Miraculous Healing from Asthma\",\"I was healed completely after praying at the Healing Streams service.\",\"Healing Streams\",\"Nigeria\",\"Christ Embassy Lagos\",\"Zone 5\"\n"
+      + "\"Business Breakthrough\",\"Received a major contract after partnering with the ministry.\",\"Partnership\",\"South Africa\",\"Christ Embassy Johannesburg\",\"SA Zone 2\"";
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "testimonies_template.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleBulkSubmit = async () => {
+    setError(null);
+    setSubmitting(true);
+    setProgress(0);
+    try {
+      const total = parsedStories.length;
+      for (let i = 0; i < total; i++) {
+        const item = parsedStories[i];
+        await api.post(API.submit, {
+          title: item.title,
+          description: item.description,
+          categoryId: item.categoryId,
+          country: item.country,
+          church: item.church,
+          zone: item.zone,
+        });
+        setProgress(Math.round(((i + 1) / total) * 100));
+      }
+      setStep(DONE);
+      onSuccess?.({ bulkCount: total });
+    } catch (e) {
+      setError("Import failed: " + (e.response?.data?.message || e.message));
     } finally {
       setSubmitting(false);
     }
@@ -458,74 +642,136 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
           STEP 1 — Tell Your Story
       ══════════════════════════════════════════════ */}
       {step === S.STORY && (
-        <div className="mms-card">
-          <span className="mms-step-eyebrow">Step 2 of {steps.length}</span>
-          <h2>Tell Your Story</h2>
-          <p className="mms-card-sub">Write in your own words — God moves through testimony.</p>
+        isBulk ? (
+          <div className="mms-card">
+            <span className="mms-step-eyebrow">Step 2 of {steps.length}</span>
+            <h2>Bulk Import Testimonies</h2>
+            <p className="mms-card-sub">Upload a CSV file containing your testimonies.</p>
 
-          {/* Format context pill */}
-          {fmt && (
-            <div className="mms-format-pill">
-              <fmt.Icon /> {fmt.label}
+            {error && <div className="mms-error">{error}</div>}
+
+            <div className="mms-upload-box" style={{ padding: "30px 20px" }}>
+              <input
+                type="file"
+                accept=".csv"
+                onChange={handleCsvUpload}
+                disabled={submitting}
+              />
+              <Icon.Csv />
+              <h4>Select or drop CSV file</h4>
+              <p>Filename must end with .csv</p>
             </div>
-          )}
 
-          {error && <div className="mms-error">{error}</div>}
+            <div style={{ marginTop: "20px", fontSize: "13px", color: "var(--muted)" }}>
+              <h4 style={{ color: "var(--text)", marginBottom: "8px" }}>CSV Format Template</h4>
+              <p>The CSV must have the following header columns:</p>
+              <code style={{ display: "block", background: "var(--bg-card-hover)", padding: "10px", borderRadius: "8px", marginTop: "5px", color: "var(--gold)", overflowX: "auto" }}>
+                title,description,category,country,church,zone
+              </code>
+              <button
+                type="button"
+                className="mms-btn-secondary"
+                style={{ marginTop: "12px", padding: "6px 12px", fontSize: "12px" }}
+                onClick={downloadCsvTemplate}
+              >
+                Download CSV Template
+              </button>
+            </div>
 
-          <div className="mms-field">
-            <label>Testimony Title</label>
-            <input
-              placeholder="e.g. God restored my health in three days"
-              value={form.title}
-              onChange={(e) => set("title", e.target.value)}
-            />
+            {parsedStories.length > 0 && (
+              <div style={{ marginTop: "25px" }}>
+                <h4 style={{ marginBottom: "10px", color: "var(--text)" }}>Parsed Testimonies ({parsedStories.length})</h4>
+                <div style={{ maxHeight: "200px", overflowY: "auto", border: "1px solid var(--border)", borderRadius: "8px" }}>
+                  {parsedStories.map((item, idx) => (
+                    <div key={idx} style={{ padding: "10px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div>
+                        <div style={{ fontWeight: "600", fontSize: "14px", color: "var(--text)" }}>{item.title}</div>
+                        <div style={{ fontSize: "12px", color: "var(--muted)" }}>Category: {item.categoryName} | {item.country}</div>
+                      </div>
+                      <span style={{ color: "var(--gold)", fontWeight: "600", fontSize: "12px" }}>✓ Ready</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {submitting && (
+              <div style={{ marginTop: "20px" }}>
+                <p style={{ fontSize: "14px", fontWeight: "600", marginBottom: "8px" }}>Importing Testimonies: {progress}%</p>
+                <div className="mms-progress-bar">
+                  <div className="mms-progress-fill" style={{ width: `${progress}%` }} />
+                </div>
+              </div>
+            )}
           </div>
+        ) : (
+          <div className="mms-card">
+            <span className="mms-step-eyebrow">Step 2 of {steps.length}</span>
+            <h2>Tell Your Story</h2>
+            <p className="mms-card-sub">Write in your own words — God moves through testimony.</p>
 
-          <div className="mms-field">
-            <label>Category</label>
-            <select
-              value={form.categoryId}
-              onChange={(e) => set("categoryId", e.target.value)}
-              // disabled={loadingCats}  // TODO: uncomment when fetching from API
-            >
-              <option value="">Select a category</option>
-              {/* TODO: replace MOCK_CATEGORIES with API response */}
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
-          </div>
+            {/* Format context pill */}
+            {fmt && (
+              <div className="mms-format-pill">
+                <fmt.Icon /> {fmt.label}
+              </div>
+            )}
 
-          <div className="mms-row">
+            {error && <div className="mms-error">{error}</div>}
+
             <div className="mms-field">
-              <label>Country</label>
-              <input placeholder="Nigeria" value={form.country} onChange={(e) => set("country", e.target.value)} />
+              <label>Testimony Title</label>
+              <input
+                placeholder="e.g. God restored my health in three days"
+                value={form.title}
+                onChange={(e) => set("title", e.target.value)}
+              />
             </div>
+
             <div className="mms-field">
-              <label>Zone</label>
-              <input placeholder="Zone 4" value={form.zone} onChange={(e) => set("zone", e.target.value)} />
+              <label>Category</label>
+              <select
+                value={form.categoryId}
+                onChange={(e) => set("categoryId", e.target.value)}
+              >
+                <option value="">Select a category</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="mms-row">
+              <div className="mms-field">
+                <label>Country</label>
+                <input placeholder="Nigeria" value={form.country} onChange={(e) => set("country", e.target.value)} />
+              </div>
+              <div className="mms-field">
+                <label>Zone</label>
+                <input placeholder="Zone 4" value={form.zone} onChange={(e) => set("zone", e.target.value)} />
+              </div>
+            </div>
+
+            <div className="mms-field">
+              <label>Church</label>
+              <input placeholder="Christ Embassy Lagos" value={form.church} onChange={(e) => set("church", e.target.value)} />
+            </div>
+
+            <div className="mms-field">
+              <label>Your Testimony</label>
+              <textarea
+                rows={7}
+                placeholder="Share what happened in your own words…"
+                value={form.description}
+                onChange={(e) => set("description", e.target.value)}
+                maxLength={2000}
+              />
+              <div className={`mms-char${form.description.length > 1800 ? " warn" : ""}`}>
+                {form.description.length} / 2000
+              </div>
             </div>
           </div>
-
-          <div className="mms-field">
-            <label>Church</label>
-            <input placeholder="Christ Embassy Lagos" value={form.church} onChange={(e) => set("church", e.target.value)} />
-          </div>
-
-          <div className="mms-field">
-            <label>Your Testimony</label>
-            <textarea
-              rows={7}
-              placeholder="Share what happened in your own words…"
-              value={form.description}
-              onChange={(e) => set("description", e.target.value)}
-              maxLength={2000}
-            />
-            <div className={`mms-char${form.description.length > 1800 ? " warn" : ""}`}>
-              {form.description.length} / 2000
-            </div>
-          </div>
-        </div>
+        )
       )}
 
       {/* ══════════════════════════════════════════════
@@ -742,12 +988,13 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
         <div className="mms-card">
           <div className="mms-success">
             <div className="mms-success-halo">🙏</div>
-            <h2>Testimony Received</h2>
+            <h2>{isBulk ? "Import Completed!" : "Testimony Received"}</h2>
             <p>
-              Your story is under review and will be published shortly.
-              Thank you for sharing what God has done.
+              {isBulk
+                ? `Successfully imported ${parsedStories.length} testimonies into the portal for review.`
+                : "Your story is under review and will be published shortly. Thank you for sharing what God has done."}
             </p>
-            {testimonyId && (
+            {!isBulk && testimonyId && (
               <div className="mms-success-ref">
                 Reference ID: <strong>#{testimonyId}</strong>
               </div>
@@ -781,15 +1028,27 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
 
           {/* Story → API → next */}
           {step === S.STORY && (
-            <button
-              className="mms-btn-primary"
-              onClick={handleSubmitStory}
-              disabled={!canContinueStory || submitting}
-            >
-              {submitting
-                ? <><span className="mms-spinner" /> Saving…</>
-                : <>Continue →</>}
-            </button>
+            isBulk ? (
+              <button
+                className="mms-btn-primary"
+                onClick={handleBulkSubmit}
+                disabled={parsedStories.length === 0 || submitting}
+              >
+                {submitting
+                  ? <><span className="mms-spinner" /> Importing…</>
+                  : <>Import Testimonies →</>}
+              </button>
+            ) : (
+              <button
+                className="mms-btn-primary"
+                onClick={handleSubmitStory}
+                disabled={!canContinueStory || submitting}
+              >
+                {submitting
+                  ? <><span className="mms-spinner" /> Saving…</>
+                  : <>Continue →</>}
+              </button>
+            )
           )}
 
           {/* Media → Preview (disabled until recording complete for rec formats) */}

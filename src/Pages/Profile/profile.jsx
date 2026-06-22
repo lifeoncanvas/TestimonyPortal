@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import {
-  ChevronLeft, Bell, Settings, Camera, Heart, Bookmark,
+  ChevronLeft, Bell, Settings, Heart, Bookmark,
   Eye, Share2, TrendingUp, CheckCircle, ChevronRight,
   LogOut, Edit3, Award, FileText,
 } from "lucide-react";
@@ -161,16 +161,6 @@ export default function Profile() {
       console.error("Error marking read:", err);
     }
   };
-
-  const initials = user.name
-    ? user.name
-        .split(" ")
-        .map((n) => n[0])
-        .join("")
-        .slice(0, 2)
-        .toUpperCase()
-    : "U";
-
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   const joinDate = user.createdAt
@@ -220,18 +210,6 @@ export default function Profile() {
 
       {/* ── PROFILE CARD ── */}
       <section className="profile-card">
-        <div className="profile-avatar-wrap">
-          <div className="profile-avatar">
-            {user.avatarUrl
-              ? <img src={user.avatarUrl} alt={user.name} />
-              : <span>{initials}</span>
-            }
-          </div>
-          <button className="profile-camera-btn" aria-label="Change photo" onClick={() => document.getElementById("avatar-upload")?.click()}>
-            <Camera size={13} />
-            <input id="avatar-upload" type="file" accept="image/*" style={{ display: "none" }} onChange={() => {}} />
-          </button>
-        </div>
 
         <div className="profile-identity">
           {editMode ? (
@@ -264,7 +242,7 @@ export default function Profile() {
           ) : (
             <>
               <h1 className="profile-name">{user.name}</h1>
-              <p className="profile-handle">{user.email}</p>
+              <p className="profile-handle">{user.email || user.phoneNumber}</p>
               <p className="profile-sub">{user.church} · {user.zone} · {user.country}</p>
             </>
           )}
