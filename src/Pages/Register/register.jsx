@@ -25,6 +25,8 @@ export default function Register() {
   const [otpSent, setOtpSent] = useState(false);
   const [otp, setOtp] = useState("");
   const [serverOtp, setServerOtp] = useState("");
+  const [tempKcEmail, setTempKcEmail] = useState("");
+  const [tempKcName, setTempKcName] = useState("");
 
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
 
@@ -122,32 +124,17 @@ export default function Register() {
   const handleKingschatAuth = async () => {
     setError("");
     setKingschatLoading(true);
-    const email = form.email || "kingschat_tester@kingschat.com";
-    const password = "KingschatPassword123!";
-    const emailPrefix = email.split("@")[0];
-    const name = email === "kingschat_tester@kingschat.com"
-      ? "KingsChat Member"
-      : emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1);
+    const email = tempKcEmail || "kingschat_tester@kingschat.com";
+    const name = tempKcName || (email === "kingschat_tester@kingschat.com" ? "KingsChat Member" : email.split("@")[0].charAt(0).toUpperCase() + email.split("@")[0].slice(1));
 
     try {
-      let res;
-      try {
-        // Try registering a default Kingschat user
-        res = await api.post("/api/auth/register", {
-          name: name,
-          email: email,
-          password: password,
-          church: form.church || "Christ Embassy Virtual Church",
-          zone: form.zone || "Virtual Zone 1",
-          country: form.country || "Nigeria",
-        });
-      } catch (regErr) {
-        // If already registered, log them in
-        res = await api.post("/api/auth/login", {
-          email: email,
-          password: password,
-        });
-      }
+      const res = await api.post("/api/auth/kingschat", {
+        name: name,
+        email: email,
+        church: form.church || "Christ Embassy Virtual Church",
+        zone: form.zone || "Virtual Zone 1",
+        country: form.country || "Nigeria",
+      });
 
       localStorage.setItem("token", res.data.token);
       localStorage.setItem("user", JSON.stringify(res.data.user));
@@ -160,10 +147,10 @@ export default function Register() {
     }
   };
 
-  const kcEmail = form.email || "kingschat_tester@kingschat.com";
-  const kcName = kcEmail === "kingschat_tester@kingschat.com"
+  const kcEmail = tempKcEmail || "kingschat_tester@kingschat.com";
+  const kcName = tempKcName || (kcEmail === "kingschat_tester@kingschat.com"
     ? "KingsChat Member"
-    : kcEmail.split("@")[0].charAt(0).toUpperCase() + kcEmail.split("@")[0].slice(1);
+    : kcEmail.split("@")[0].charAt(0).toUpperCase() + kcEmail.split("@")[0].slice(1));
 
   return (
     <div className="register-page">
@@ -343,6 +330,26 @@ export default function Register() {
               <p>
                 <strong>My Miracle Story</strong> is requesting permission to access your KingsChat profile details:
               </p>
+              <div className="auth-field" style={{ marginBottom: "12px" }}>
+                <label style={{ color: "#0f2447", fontSize: "12px", fontWeight: "600", display: "block", marginBottom: "6px" }}>Enter KingsChat Email</label>
+                <input
+                  type="email"
+                  placeholder="e.g. sharon@kingschat.com"
+                  value={tempKcEmail}
+                  onChange={(e) => setTempKcEmail(e.target.value)}
+                  style={{ width: "100%", padding: "10px 12px", border: "1.5px solid #0084ff", borderRadius: "8px", background: "#faf7f2", color: "#1a1209" }}
+                />
+              </div>
+              <div className="auth-field" style={{ marginBottom: "15px" }}>
+                <label style={{ color: "#0f2447", fontSize: "12px", fontWeight: "600", display: "block", marginBottom: "6px" }}>Enter KingsChat Full Name</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Sharon Shelke"
+                  value={tempKcName}
+                  onChange={(e) => setTempKcName(e.target.value)}
+                  style={{ width: "100%", padding: "10px 12px", border: "1.5px solid #0084ff", borderRadius: "8px", background: "#faf7f2", color: "#1a1209" }}
+                />
+              </div>
               <ul>
                 <li>✓ Full Name ({kcName})</li>
                 <li>✓ Email address ({kcEmail})</li>

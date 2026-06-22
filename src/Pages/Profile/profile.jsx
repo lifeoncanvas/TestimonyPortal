@@ -28,6 +28,15 @@ const getTagStyle = (cat) => TAG_STYLES[cat] || { bg: "#e8d5b0", color: "#6b4a1a
 const TABS = ["Saved", "Analytics", "Notifications"];
 
 export default function Profile() {
+  const getInitials = (name) => {
+    if (!name) return "?";
+    const parts = name.trim().split(" ");
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return parts[0][0].toUpperCase();
+  };
+
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("Saved");
   const [editMode, setEditMode] = useState(false);
@@ -210,6 +219,16 @@ export default function Profile() {
 
       {/* ── PROFILE CARD ── */}
       <section className="profile-card">
+
+        <div className="profile-avatar-wrap">
+          <div className="profile-avatar">
+            {user.avatarUrl && !user.avatarUrl.includes("dicebear") && !user.avatarUrl.includes("pravatar") ? (
+              <img src={user.avatarUrl} alt={user.name} />
+            ) : (
+              getInitials(user.name)
+            )}
+          </div>
+        </div>
 
         <div className="profile-identity">
           {editMode ? (

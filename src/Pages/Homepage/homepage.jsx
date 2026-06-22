@@ -178,6 +178,15 @@ const TAG_STYLES = {
 const getTagStyle = (cat) => TAG_STYLES[cat] || { bg: "#e8d5b0", color: "#6b4a1a" };
 
 export default function Homepage() {
+  const getInitials = (name) => {
+    if (!name) return "?";
+    const parts = name.trim().split(" ");
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return parts[0][0].toUpperCase();
+  };
+
   const [activeCategory, setActiveCategory] = useState("all");
   const navigate = useNavigate();
   const isLoggedIn = useIsLoggedIn();
@@ -305,7 +314,11 @@ export default function Homepage() {
               <button className="icon-btn" aria-label="Notifications"
                 onClick={() => navigate("/notifications")}>🔔</button>
               <div className="avatar" onClick={() => navigate("/profile")} style={{ cursor: "pointer" }}>
-                <img src={currentUser?.avatarUrl || "https://i.pravatar.cc/100"} alt="User profile" />
+                {currentUser?.avatarUrl && !currentUser.avatarUrl.includes("dicebear") && !currentUser.avatarUrl.includes("pravatar") ? (
+                  <img src={currentUser.avatarUrl} alt="User profile" />
+                ) : (
+                  <div className="avatar-initials">{getInitials(currentUser?.name)}</div>
+                )}
               </div>
             </>
           ) : (
