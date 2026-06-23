@@ -311,6 +311,16 @@ export default function Homepage() {
         <div className="header-actions">
           {isLoggedIn ? (
             <>
+              {currentUser?.role === "ADMIN" && (
+                <button
+                  className="icon-btn admin-quick-btn"
+                  aria-label="Admin Dashboard"
+                  onClick={() => navigate("/admin")}
+                  style={{ marginRight: "10px", fontSize: "16px" }}
+                >
+                  🛡️
+                </button>
+              )}
               <button className="icon-btn" aria-label="Notifications"
                 onClick={() => navigate("/notifications")}>🔔</button>
               <div className="avatar" onClick={() => navigate("/profile")} style={{ cursor: "pointer" }}>

@@ -6,7 +6,7 @@ import { useNavigate } from "react-router";
 import {
   ChevronLeft, Bell, Settings, Heart, Bookmark,
   Eye, Share2, TrendingUp, CheckCircle, ChevronRight,
-  LogOut, Edit3, Award, FileText,
+  LogOut, Edit3, Award, FileText, Shield,
 } from "lucide-react";
 import BottomNav from "../../Sections/BottomNav/BottomNav";
 import api from "../../services/axiosConfig";
@@ -330,6 +330,31 @@ export default function Profile() {
         </div>
         <ChevronRight size={16} className="profile-nav-row-chevron" />
       </button>
+
+      {/* ── ADMIN PANEL NAV ROW (ADMIN ONLY) ────────────────────────────────── */}
+      {user.role === "ADMIN" && (
+        <button
+          className="profile-nav-row admin-nav-row"
+          onClick={() => navigate("/admin")}
+          aria-label="Go to Admin Dashboard"
+          style={{
+            marginTop: "10px",
+            background: "linear-gradient(135deg, rgba(230, 240, 255, 0.9), rgba(240, 245, 255, 0.9))",
+            border: "1px solid #b3d1ff"
+          }}
+        >
+          <div className="profile-nav-row-left">
+            <div className="profile-nav-row-icon" style={{ background: "#4facfe", color: "#fff" }}>
+              <Shield size={16} />
+            </div>
+            <div>
+              <p className="profile-nav-row-title" style={{ color: "#0052cc", fontWeight: "bold" }}>Admin Portal</p>
+              <p className="profile-nav-row-sub" style={{ color: "#3366cc" }}>Moderate testimonies, manage categories & stats</p>
+            </div>
+          </div>
+          <ChevronRight size={16} className="profile-nav-row-chevron" style={{ color: "#0052cc" }} />
+        </button>
+      )}
 
       {/* ── TABS ── */}
       <div className="profile-tabs">
