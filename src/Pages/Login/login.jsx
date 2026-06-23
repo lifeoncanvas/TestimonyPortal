@@ -125,20 +125,19 @@ export default function Login() {
   return (
     <div className="login-page">
       <div className="auth-card">
+        <div className="auth-logo">
+          <span className="logo-icon">✨</span>
+          <h2>My Miracle Story</h2>
+        </div>
         <h1>Welcome Back</h1>
         <p className="auth-sub">Sign in to your account</p>
 
         {error && <div className="auth-error">{error}</div>}
 
-        <div className="auth-tabs" style={{ display: "flex", gap: "10px", marginBottom: "20px", borderBottom: "1px solid var(--border)", paddingBottom: "10px" }}>
+        <div className="auth-tabs">
           <button
             type="button"
             className={`auth-tab ${loginMethod === "email" ? "active" : ""}`}
-            style={{
-              background: "none", border: "none", fontFamily: "inherit", fontSize: "14px", fontWeight: "600",
-              color: loginMethod === "email" ? "var(--gold)" : "var(--muted)", cursor: "pointer",
-              borderBottom: loginMethod === "email" ? "2px solid var(--gold)" : "none", paddingBottom: "5px"
-            }}
             onClick={() => { setLoginMethod("email"); setError(""); }}
           >
             Email Login
@@ -146,11 +145,6 @@ export default function Login() {
           <button
             type="button"
             className={`auth-tab ${loginMethod === "phone" ? "active" : ""}`}
-            style={{
-              background: "none", border: "none", fontFamily: "inherit", fontSize: "14px", fontWeight: "600",
-              color: loginMethod === "phone" ? "var(--gold)" : "var(--muted)", cursor: "pointer",
-              borderBottom: loginMethod === "phone" ? "2px solid var(--gold)" : "none", paddingBottom: "5px"
-            }}
             onClick={() => { setLoginMethod("phone"); setError(""); }}
           >
             Phone Login
@@ -207,7 +201,7 @@ export default function Login() {
                     disabled={loading}
                   />
                   {serverOtp && (
-                    <small style={{ color: "var(--gold)", display: "block", marginTop: "5px", fontWeight: "600" }}>
+                    <small className="otp-debug">
                       Debug Test OTP Code: {serverOtp}
                     </small>
                   )}
@@ -220,8 +214,7 @@ export default function Login() {
             {otpSent && (
               <button
                 type="button"
-                className="auth-btn"
-                style={{ background: "none", color: "var(--muted)", border: "1px solid var(--border)", marginTop: "8px" }}
+                className="auth-btn-secondary"
                 onClick={() => { setOtpSent(false); setOtp(""); }}
               >
                 Change Phone Number
@@ -261,27 +254,25 @@ export default function Login() {
               <p>
                 <strong>My Miracle Story</strong> is requesting permission to access your KingsChat profile details:
               </p>
-              <div className="auth-field" style={{ marginBottom: "12px" }}>
-                <label style={{ color: "#0f2447", fontSize: "12px", fontWeight: "600", display: "block", marginBottom: "6px" }}>Enter KingsChat Email</label>
+              <div className="kc-field">
+                <label>Enter KingsChat Email</label>
                 <input
                   type="email"
                   placeholder="e.g. sharon@kingschat.com"
                   value={tempKcEmail}
                   onChange={(e) => setTempKcEmail(e.target.value)}
-                  style={{ width: "100%", padding: "10px 12px", border: "1.5px solid #0084ff", borderRadius: "8px", background: "#faf7f2", color: "#1a1209" }}
                 />
               </div>
-              <div className="auth-field" style={{ marginBottom: "15px" }}>
-                <label style={{ color: "#0f2447", fontSize: "12px", fontWeight: "600", display: "block", marginBottom: "6px" }}>Enter KingsChat Full Name</label>
+              <div className="kc-field">
+                <label>Enter KingsChat Full Name</label>
                 <input
                   type="text"
                   placeholder="e.g. Sharon Shelke"
                   value={tempKcName}
                   onChange={(e) => setTempKcName(e.target.value)}
-                  style={{ width: "100%", padding: "10px 12px", border: "1.5px solid #0084ff", borderRadius: "8px", background: "#faf7f2", color: "#1a1209" }}
                 />
               </div>
-              <ul>
+              <ul className="kc-permissions">
                 <li>✓ Full Name ({kcName})</li>
                 <li>✓ Email address ({kcEmail})</li>
                 <li>✓ Church & Zone details</li>
