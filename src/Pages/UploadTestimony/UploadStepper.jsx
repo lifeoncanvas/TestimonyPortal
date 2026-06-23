@@ -310,6 +310,7 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
   const [progress,   setProgress]   = useState(0);
   const [dragOver,   setDragOver]   = useState(false);
   const [parsedStories, setParsedStories] = useState([]);
+  const [editId,     setEditId]     = useState(null);
 
   const [form, setForm] = useState({
     title: "", categoryId: "", country: "", church: "", zone: "", description: "",
@@ -330,6 +331,30 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
         zone: prev.zone || zoneParam,
         church: prev.church || churchParam,
       }));
+    }
+
+    const editParam = searchParams.get("edit");
+    if (editParam) {
+      const id = Number(editParam);
+      setEditId(id);
+      setFormat(FORMATS.find(f => f.id === "text") || FORMATS[0]);
+      setStep(1); // Go straight to STORY step
+      api.get(`/api/testimonies/${id}`)
+        .then((res) => {
+          const t = res.data;
+          setForm({
+            title: t.title || "",
+            categoryId: t.category?.id ? String(t.category.id) : "",
+            country: t.country || "",
+            church: t.church || "",
+            zone: t.zone || "",
+            description: t.description || "",
+          });
+        })
+        .catch((err) => {
+          console.error("Error loading testimony for edit:", err);
+          setError("Failed to load testimony details.");
+        });
     }
 
     api.get(API.categories)
@@ -376,16 +401,29 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
     setError(null);
     setSubmitting(true);
     try {
-      const res = await api.post(API.submit, {
-        title:       form.title,
-        description: form.description,
-        categoryId:  Number(form.categoryId),
-        country:     form.country,
-        church:      form.church,
-        zone:        form.zone,
-      });
+      let id = testimonyId;
+      if (editId) {
+        await api.put(`${API.submit}/${editId}`, {
+          title:       form.title,
+          description: form.description,
+          categoryId:  Number(form.categoryId),
+          country:     form.country,
+          church:      form.church,
+          zone:        form.zone,
+        });
+        id = editId;
+      } else {
+        const res = await api.post(API.submit, {
+          title:       form.title,
+          description: form.description,
+          categoryId:  Number(form.categoryId),
+          country:     form.country,
+          church:      form.church,
+          zone:        form.zone,
+        });
+        id = res.data.id;
+      }
 
-      const id = res.data.id;
       setTestimonyId(id);
       setStep(isText ? PREVIEW : S.MEDIA);
     } catch (e) {
