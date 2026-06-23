@@ -1,0 +1,182 @@
+<html xmlns:o='urn:schemas-microsoft-rendering-keys:office:office' xmlns:w='urn:schemas-microsoft-rendering-keys:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head>
+<meta charset="utf-8">
+<title>My Miracle Story - Testimony Portal Documentation</title>
+<style>
+  body {
+    font-family: 'Calibri', 'Arial', sans-serif;
+    color: #333333;
+    line-height: 1.6;
+    margin: 40px;
+  }
+  h1 {
+    color: #0f2447;
+    font-size: 26pt;
+    border-bottom: 2px solid #c9a96e;
+    padding-bottom: 5px;
+    margin-bottom: 20px;
+  }
+  h2 {
+    color: #0f2447;
+    font-size: 18pt;
+    margin-top: 30px;
+    margin-bottom: 10px;
+  }
+  h3 {
+    color: #2a5298;
+    font-size: 14pt;
+    margin-top: 20px;
+    margin-bottom: 8px;
+  }
+  p, li {
+    font-size: 11pt;
+  }
+  ul {
+    margin-bottom: 15px;
+  }
+  li {
+    margin-bottom: 5px;
+  }
+  .highlight {
+    background-color: #f7f9fc;
+    border-left: 4px solid #c9a96e;
+    padding: 10px 15px;
+    margin: 15px 0;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 20px 0;
+  }
+  th, td {
+    border: 1px solid #dddddd;
+    text-align: left;
+    padding: 8px;
+    font-size: 10.5pt;
+  }
+  th {
+    background-color: #0f2447;
+    color: white;
+  }
+  tr:nth-child(even) {
+    background-color: #f9f9f9;
+  }
+  .footer {
+    margin-top: 50px;
+    font-size: 9pt;
+    color: #888888;
+    text-align: center;
+    border-top: 1px solid #eeeeee;
+    padding-top: 10px;
+  }
+</style>
+</head>
+<body>
+
+<h1>My Miracle Story — Testimony Portal Documentation</h1>
+<p><strong>Version:</strong> 1.0.0 | <strong>Deployment Host:</strong> http://13.233.156.8/ | <strong>Date:</strong> June 23, 2026</p>
+
+<div class="highlight">
+  <strong>Executive Summary:</strong> The Testimony Portal ("My Miracle Story") is a web application designed to allow church members to share testimonies, react to others' miracles, and engage with the church community. The portal has two key access modes: public/user access and administrative/moderation access.
+</div>
+
+---
+
+<h2>1. Public & Guest Functionality</h2>
+<p>When a visitor accesses the portal root URL (<code>http://13.233.156.8/</code>), the system serves the public interface. Guests can view testimonies without logging in, which maximizes outreach and access.</p>
+<ul>
+  <li><strong>Miracle Feed:</strong> Displays the latest published, approved testimonies.</li>
+  <li><strong>Trending Miracles:</strong> A carousel displaying testimonies flagged as trending by administrators.</li>
+  <li><strong>Testimony of the Day:</strong> Highlighted featured testimony showing title, description snippet, author details, and stats.</li>
+  <li><strong>Search & Filter:</strong> Visitors can browse testimonies by category (e.g., Healing Streams, Partnership, Crusades, etc.) or search using keywords.</li>
+  <li><strong>Prayer Streak Indicator:</strong> Shows weekly prayer engagement statistics.</li>
+</ul>
+
+---
+
+<h2>2. User Portal & Authentication</h2>
+<p>To submit testimonies, react, or manage saved content, users must sign in. Clicking the "Sign In" or "Register" buttons redirects the user to the auth portal.</p>
+
+<h3>Authentication Methods</h3>
+<ul>
+  <li><strong>Email Login:</strong> Conventional login using email and password.</li>
+  <li><strong>Phone Login (OTP):</strong> Multi-factor authentication where the user enters their phone number and receives a 6-digit verification code.</li>
+  <li><strong>KingsChat Auth:</strong> Secure OAuth integration allowing Christ Embassy members to log in instantly using their KingsChat profile.</li>
+</ul>
+
+<h3>User Workspace Features</h3>
+<ul>
+  <li><strong>Share Your Story (Upload Stepper):</strong> A multi-step form where users can upload testimonies. They can enter a title, choose a category, write a description, select country/church details, and upload image files.</li>
+  <li><strong>Reactions & Engagement:</strong> Logged-in users can like testimonies (❤️), record that they received the same miracle, or pray for the author (🙏).</li>
+  <li><strong>Saved Testimonies:</strong> Allows users to bookmark testimonies to read later. Saved testimonies are visible on the profile tab.</li>
+  <li><strong>My Testimonies Queue:</strong> A personal dashboard where users track the status of their submitted testimonies (Approved/Published, Pending Review, or Rejected).</li>
+  <li><strong>Edit & Delete:</strong> Users can edit or delete their own testimonies. To prevent unauthorized modifications, editing an approved testimony automatically reverts it to a <strong>Pending</strong> state for admin re-moderation.</li>
+</ul>
+
+---
+
+<h2>3. Admin & Moderation Portal</h2>
+<p>Users registered with the <code>ADMIN</code> role (such as <code>sharonshelke1@gmail.com</code>) have access to the Administrative Panel. This panel is accessed via the shield shortcut in the header (🛡️) or the Admin Portal option on the Profile page.</p>
+
+<h3>Admin Dashboard</h3>
+<p>Provides a comprehensive statistical breakdown of the testimony portal database:</p>
+<table>
+  <thead>
+    <tr>
+      <th>Stat Metric</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Total Users</strong></td>
+      <td>Count of all registered users on the platform.</td>
+    </tr>
+    <tr>
+      <td><strong>Testimonies</strong></td>
+      <td>Total testimonies submitted across all states.</td>
+    </tr>
+    <tr>
+      <td><strong>Pending</strong></td>
+      <td>Testimonies currently in the queue awaiting review.</td>
+    </tr>
+    <tr>
+      <td><strong>Approved</strong></td>
+      <td>Published testimonies currently visible on the public feed.</td>
+    </tr>
+    <tr>
+      <td><strong>Rejected</strong></td>
+      <td>Testimonies flagged as inappropriate or matching guidelines failure.</td>
+    </tr>
+    <tr>
+      <td><strong>Categories</strong></td>
+      <td>Number of active categories configured.</td>
+    </tr>
+    <tr>
+      <td><strong>Total Likes</strong></td>
+      <td>Total community likes recorded.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>Moderation Queue</h3>
+<p>Allows administrators to review and action pending testimonies:</p>
+<ul>
+  <li><strong>Approve:</strong> Publishes the testimony, making it immediately visible to the public feed.</li>
+  <li><strong>Reject:</strong> Hides the testimony and opens a modal to specify a reason (e.g., "Does not meet content guidelines").</li>
+  <li><strong>Feature/Unfeature:</strong> Displays the testimony as the "Testimony of the Day" on the homepage.</li>
+  <li><strong>Trend/Untrend:</strong> Flags the testimony to appear in the "Trending Miracles" list.</li>
+  <li><strong>Delete:</strong> Permanently deletes the testimony from the database.</li>
+</ul>
+
+<h3>Category Manager</h3>
+<p>Administrators can create, edit, or delete the categories that users select when writing testimonies, allowing complete control over catalog structure.</p>
+
+---
+
+<div class="footer">
+  <p>&copy; 2026 My Miracle Story testimony Portal. All rights reserved.</p>
+</div>
+
+</body>
+</html>
