@@ -269,6 +269,11 @@
   color: #1a0a14;
 }
 .mod-btn.reject:hover { opacity: 0.85; }
+.mod-btn.delete {
+  background: linear-gradient(135deg, #ef4444, #f87171);
+  color: #ffffff;
+}
+.mod-btn.delete:hover { opacity: 0.85; }
 .mod-btn.toggle {
   background: rgba(255,255,255,0.06);
   border: 1px solid rgba(255,255,255,0.1);

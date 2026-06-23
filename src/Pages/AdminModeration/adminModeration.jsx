@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import {
   ChevronLeft, CheckCircle, XCircle, Clock, Eye,
-  ChevronDown, ChevronUp, Star, TrendingUp, Shield,
+  ChevronDown, ChevronUp, Star, TrendingUp, Shield, Trash2,
 } from "lucide-react";
 import api from "../../services/axiosConfig";
 import "./styles.css";
@@ -100,6 +100,17 @@ export default function AdminModeration() {
       showToast("Trending status toggled!");
     } catch (err) {
       showToast("Failed: " + (err.response?.data?.message || err.message), "error");
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this testimony permanently? This action cannot be undone.")) return;
+    try {
+      await api.delete(`/api/testimonies/${id}`);
+      setTestimonies((prev) => prev.filter((t) => t.id !== id));
+      showToast("Testimony deleted successfully!");
+    } catch (err) {
+      showToast("Failed to delete: " + (err.response?.data?.message || err.message), "error");
     }
   };
 
@@ -213,6 +224,9 @@ export default function AdminModeration() {
                       onClick={() => handleToggleTrending(t.id)}
                     >
                       <TrendingUp size={13} /> {t.isTrending ? "Untrend" : "Trend"}
+                    </button>
+                    <button className="mod-btn delete" onClick={() => handleDelete(t.id)}>
+                      <Trash2 size={13} /> Delete
                     </button>
                   </div>
                 </div>
