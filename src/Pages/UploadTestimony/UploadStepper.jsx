@@ -90,16 +90,9 @@ const FORMATS = [
   {
     id: "upload",
     Icon: Icon.Upload,
-    label: "Upload Media",
-    desc: "Attach existing photos or videos",
+    label: "Upload Video",
+    desc: "Attach an existing video of your testimony",
     hasMedia: true,
-  },
-  {
-    id: "bulk-csv",
-    Icon: Icon.Csv,
-    label: "Bulk Import (CSV)",
-    desc: "Upload a CSV file containing multiple testimonies",
-    hasMedia: false,
   },
 ];
 
@@ -112,37 +105,19 @@ const API = {
 
 // ─── Step Definitions (dynamic based on format) ───────────────────────────────
 const stepsFor = (formatId) => {
-  if (formatId === "bulk-csv") {
-    return [
-      { label: "Format",     icon: "◇" },
-      { label: "Upload CSV", icon: "✦" },
-      { label: "Done",       icon: "✧" },
-    ];
-  }
-  return formatId === "text"
-    ? [
-        { label: "Format",   icon: "◇" },
-        { label: "Story",    icon: "✦" },
-        { label: "Preview",  icon: "◉" },
-        { label: "Done",     icon: "✧" },
-      ]
-    : [
-        { label: "Format",   icon: "◇" },
-        { label: "Story",    icon: "✦" },
-        { label: "Media",    icon: "◈" },
-        { label: "Preview",  icon: "◉" },
-        { label: "Done",     icon: "✧" },
-      ];
+  return [
+    { label: "Format",   icon: "◇" },
+    { label: "Story",    icon: "✦" },
+    { label: "Preview",  icon: "◉" },
+    { label: "Done",     icon: "✧" },
+  ];
 };
 
-// step indices that work for both layouts
 const S = {
   FORMAT:  0,
   STORY:   1,
-  MEDIA:   2,   // only used by non-text formats
-  // preview + done are offset by –1 for text-only
-  preview: (isText) => (isText ? 2 : 3),
-  done:    (isText, isBulk) => (isBulk ? 2 : isText ? 3 : 4),
+  PREVIEW: 2,
+  DONE:    3,
 };
 
 // ─── useRecorder hook ─────────────────────────────────────────────────────────
@@ -372,22 +347,23 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
   const isText = format?.id === "text";
   const isBulk = format?.id === "bulk-csv";
   const steps  = stepsFor(format?.id);
-  const PREVIEW = S.preview(isText);
-  const DONE    = S.done(isText, isBulk);
+  const PREVIEW = S.PREVIEW;
+  const DONE    = S.DONE;
+
+  const hasRequiredMedia =
+    format?.id === "record-video"
+      ? (videoRec.recState === "done" && videoRec.blobFile)
+      : format?.id === "record-audio"
+      ? (audioRec.recState === "done" && audioRec.blobFile)
+      : format?.id === "upload"
+      ? (uploadedFiles.length > 0)
+      : true;
 
   const canContinueStory =
     form.title.trim() &&
     form.categoryId &&
-    form.description.trim().length > 20;
-
-  const canContinueMedia =
-    format?.id === "upload"
-      ? true                                    // upload is always optional
-      : format?.id === "record-video"
-      ? videoRec.recState === "done"
-      : format?.id === "record-audio"
-      ? audioRec.recState === "done"
-      : true;
+    (isText ? form.description.trim().length > 20 : true) &&
+    hasRequiredMedia;
 
   const addFiles = (sel) =>
     setUploadedFiles((p) => [
@@ -402,10 +378,11 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
     setSubmitting(true);
     try {
       let id = testimonyId;
+      const finalDescription = form.description.trim() || `[${format?.label || "Media"} Testimony]`;
       if (editId) {
         await api.put(`${API.submit}/${editId}`, {
           title:       form.title,
-          description: form.description,
+          description: finalDescription,
           categoryId:  Number(form.categoryId),
           country:     form.country,
           church:      form.church,
@@ -415,7 +392,7 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
       } else {
         const res = await api.post(API.submit, {
           title:       form.title,
-          description: form.description,
+          description: finalDescription,
           categoryId:  Number(form.categoryId),
           country:     form.country,
           church:      form.church,
@@ -425,7 +402,7 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
       }
 
       setTestimonyId(id);
-      setStep(isText ? PREVIEW : S.MEDIA);
+      setStep(PREVIEW);
     } catch (e) {
       setError(e.response?.data?.message || e.message || "Submission failed. Please try again.");
     } finally {
@@ -796,7 +773,7 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
             </div>
 
             <div className="mms-field">
-              <label>Your Testimony</label>
+              <label>Your Testimony {isText ? "" : "(Optional)"}</label>
               <textarea
                 rows={7}
                 placeholder="Share what happened in your own words…"
@@ -808,181 +785,157 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
                 {form.description.length} / 2000
               </div>
             </div>
+
+            {/* Embedded Media Section */}
+            {!isText && (
+              <div className="mms-embedded-media-section" style={{
+                marginTop: "24px",
+                paddingTop: "20px",
+                borderTop: "1.5px dashed var(--navy-border)"
+              }}>
+                <label style={{
+                  display: "block",
+                  fontSize: "10px",
+                  fontWeight: "600",
+                  letterSpacing: "0.12em",
+                  textTransform: "uppercase",
+                  color: "var(--gold)",
+                  marginBottom: "12px"
+                }}>
+                  {format?.id === "record-video" && "Record Your Video Testimony (Required)"}
+                  {format?.id === "record-audio" && "Record Your Audio Testimony (Required)"}
+                  {format?.id === "upload" && "Upload Video File (Required)"}
+                </label>
+
+                {format?.id === "record-video" && (
+                  <div className="mms-record-area">
+                    {videoRec.recState !== "done" && (
+                      <video
+                        ref={videoRec.mediaRef}
+                        muted
+                        playsInline
+                        className="mms-cam-preview"
+                        style={{ display: videoRec.recState === "recording" ? "block" : "none" }}
+                      />
+                    )}
+                    {videoRec.recState === "done" && videoRec.blobUrl && (
+                      <>
+                        <div className="mms-playback">
+                          <video src={videoRec.blobUrl} controls />
+                        </div>
+                        <button className="mms-redo-btn" onClick={videoRec.reset}>↺  Record Again</button>
+                      </>
+                    )}
+
+                    {videoRec.recState !== "done" && (
+                      <>
+                        <Waveform bars={videoRec.bars} live={videoRec.recState === "recording"} />
+                        <div className={`mms-rec-timer${videoRec.recState === "recording" ? " live" : ""}`}>
+                          {videoRec.fmt(videoRec.elapsed)}
+                        </div>
+                        <div className="mms-rec-btn-wrap">
+                          <button
+                            className={`mms-rec-btn${videoRec.recState === "recording" ? " live" : ""}`}
+                            onClick={videoRec.recState === "recording" ? videoRec.stop : videoRec.start}
+                            aria-label={videoRec.recState === "recording" ? "Stop recording" : "Start recording"}
+                          >
+                            <div className="mms-rec-dot" />
+                          </button>
+                          <span className="mms-rec-hint">
+                            {videoRec.recState === "idle"
+                              ? "Tap to enable camera and start"
+                              : "Tap to stop recording"}
+                          </span>
+                        </div>
+                        {videoRec.recState === "idle" && (
+                          <p className="mms-perm-tip">
+                            Your browser will request camera and microphone permission — please allow it to continue.
+                          </p>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {format?.id === "record-audio" && (
+                  <div className="mms-record-area">
+                    {audioRec.recState === "done" && audioRec.blobUrl ? (
+                      <>
+                        <div className="mms-playback">
+                          <audio src={audioRec.blobUrl} controls />
+                        </div>
+                        <button className="mms-redo-btn" onClick={audioRec.reset}>↺  Record Again</button>
+                      </>
+                    ) : (
+                      <>
+                        <Waveform bars={audioRec.bars} live={audioRec.recState === "recording"} />
+                        <div className={`mms-rec-timer${audioRec.recState === "recording" ? " live" : ""}`}>
+                          {audioRec.fmt(audioRec.elapsed)}
+                        </div>
+                        <div className="mms-rec-btn-wrap">
+                          <button
+                            className={`mms-rec-btn${audioRec.recState === "recording" ? " live" : ""}`}
+                            onClick={audioRec.recState === "recording" ? audioRec.stop : audioRec.start}
+                            aria-label={audioRec.recState === "recording" ? "Stop recording" : "Start recording"}
+                          >
+                            <div className="mms-rec-dot" />
+                          </button>
+                          <span className="mms-rec-hint">
+                            {audioRec.recState === "idle"
+                              ? "Tap to enable microphone and start"
+                              : "Tap to stop recording"}
+                          </span>
+                        </div>
+                        {audioRec.recState === "idle" && (
+                          <p className="mms-perm-tip">
+                            Your browser will request microphone permission — please allow it to continue.
+                          </p>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {format?.id === "upload" && (
+                  <>
+                    <div
+                      className={`mms-upload-box${dragOver ? " over" : ""}`}
+                      onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                      onDragLeave={() => setDragOver(false)}
+                      onDrop={(e) => { e.preventDefault(); setDragOver(false); addFiles(e.dataTransfer.files); }}
+                    >
+                      <input
+                        type="file"
+                        multiple
+                        accept="video/*"
+                        onChange={(e) => addFiles(e.target.files)}
+                      />
+                      <Icon.Plus />
+                      <h4>Drop video file or tap to browse</h4>
+                      <p>Videos only · Max 50 MB</p>
+                    </div>
+
+                    {uploadedFiles.length > 0 && (
+                      <div className="mms-media-grid">
+                        {uploadedFiles.map((item, i) => (
+                          <div key={i} className="mms-media-thumb">
+                            {item.file.type.startsWith("image")
+                              ? <img src={item.url} alt="" />
+                              : <video src={item.url} />}
+                            <span className="mms-thumb-type">
+                              {item.file.type.startsWith("image") ? "IMG" : "VID"}
+                            </span>
+                            <button className="mms-thumb-remove" onClick={() => removeFile(i)}>×</button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
           </div>
         )
-      )}
-
-      {/* ══════════════════════════════════════════════
-          STEP 2 — Media  (skipped for text-only)
-      ══════════════════════════════════════════════ */}
-      {step === S.MEDIA && !isText && (
-        <div className="mms-card">
-          <span className="mms-step-eyebrow">Step 3 of {steps.length}</span>
-
-          {/* ── Record Video ── */}
-          {format?.id === "record-video" && (
-            <>
-              <h2>Record Your Video</h2>
-              <p className="mms-card-sub">
-                {videoRec.recState === "idle"      && "Tap the button below — we'll ask for camera & microphone access."}
-                {videoRec.recState === "recording" && "Camera is live. Speak clearly, then tap to stop."}
-                {videoRec.recState === "done"      && "Looking good! Re-record any time or continue."}
-              </p>
-              {error && <div className="mms-error">{error}</div>}
-
-              <div className="mms-record-area">
-                {/* Cam preview / playback */}
-                {videoRec.recState !== "done" && (
-                  <video
-                    ref={videoRec.mediaRef}
-                    muted
-                    playsInline
-                    className="mms-cam-preview"
-                    style={{ display: videoRec.recState === "recording" ? "block" : "none" }}
-                  />
-                )}
-                {videoRec.recState === "done" && videoRec.blobUrl && (
-                  <>
-                    <div className="mms-playback">
-                      <video src={videoRec.blobUrl} controls />
-                    </div>
-                    <button className="mms-redo-btn" onClick={videoRec.reset}>↺  Record Again</button>
-                  </>
-                )}
-
-                {/* Waveform + timer + button (while not done) */}
-                {videoRec.recState !== "done" && (
-                  <>
-                    <Waveform bars={videoRec.bars} live={videoRec.recState === "recording"} />
-                    <div className={`mms-rec-timer${videoRec.recState === "recording" ? " live" : ""}`}>
-                      {videoRec.fmt(videoRec.elapsed)}
-                    </div>
-                    <div className="mms-rec-btn-wrap">
-                      <button
-                        className={`mms-rec-btn${videoRec.recState === "recording" ? " live" : ""}`}
-                        onClick={videoRec.recState === "recording" ? videoRec.stop : videoRec.start}
-                        aria-label={videoRec.recState === "recording" ? "Stop recording" : "Start recording"}
-                      >
-                        <div className="mms-rec-dot" />
-                      </button>
-                      <span className="mms-rec-hint">
-                        {videoRec.recState === "idle"
-                          ? "Tap to enable camera and start"
-                          : "Tap to stop recording"}
-                      </span>
-                    </div>
-                    {videoRec.recState === "idle" && (
-                      <p className="mms-perm-tip">
-                        Your browser will request camera and microphone permission — please allow it to continue.
-                      </p>
-                    )}
-                  </>
-                )}
-              </div>
-            </>
-          )}
-
-          {/* ── Record Audio ── */}
-          {format?.id === "record-audio" && (
-            <>
-              <h2>Record Your Audio</h2>
-              <p className="mms-card-sub">
-                {audioRec.recState === "idle"      && "Tap the button below — we'll ask for microphone access."}
-                {audioRec.recState === "recording" && "Microphone is live. Speak clearly, then tap to stop."}
-                {audioRec.recState === "done"      && "Audio captured! Re-record any time or continue."}
-              </p>
-              {error && <div className="mms-error">{error}</div>}
-
-              <div className="mms-record-area">
-                {audioRec.recState === "done" && audioRec.blobUrl ? (
-                  <>
-                    <div className="mms-playback">
-                      <audio src={audioRec.blobUrl} controls />
-                    </div>
-                    <button className="mms-redo-btn" onClick={audioRec.reset}>↺  Record Again</button>
-                  </>
-                ) : (
-                  <>
-                    <Waveform bars={audioRec.bars} live={audioRec.recState === "recording"} />
-                    <div className={`mms-rec-timer${audioRec.recState === "recording" ? " live" : ""}`}>
-                      {audioRec.fmt(audioRec.elapsed)}
-                    </div>
-                    <div className="mms-rec-btn-wrap">
-                      <button
-                        className={`mms-rec-btn${audioRec.recState === "recording" ? " live" : ""}`}
-                        onClick={audioRec.recState === "recording" ? audioRec.stop : audioRec.start}
-                        aria-label={audioRec.recState === "recording" ? "Stop recording" : "Start recording"}
-                      >
-                        <div className="mms-rec-dot" />
-                      </button>
-                      <span className="mms-rec-hint">
-                        {audioRec.recState === "idle"
-                          ? "Tap to enable microphone and start"
-                          : "Tap to stop recording"}
-                      </span>
-                    </div>
-                    {audioRec.recState === "idle" && (
-                      <p className="mms-perm-tip">
-                        Your browser will request microphone permission — please allow it to continue.
-                      </p>
-                    )}
-                  </>
-                )}
-              </div>
-            </>
-          )}
-
-          {/* ── Upload Media ── */}
-          {format?.id === "upload" && (
-            <>
-              <h2>Upload Media</h2>
-              <p className="mms-card-sub">
-                Add photos or videos that go alongside your testimony. Optional but powerful.
-              </p>
-              {error && <div className="mms-error">{error}</div>}
-
-              <div
-                className={`mms-upload-box${dragOver ? " over" : ""}`}
-                onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-                onDragLeave={() => setDragOver(false)}
-                onDrop={(e) => { e.preventDefault(); setDragOver(false); addFiles(e.dataTransfer.files); }}
-              >
-                <input
-                  type="file"
-                  multiple
-                  accept="image/*,video/*"
-                  onChange={(e) => addFiles(e.target.files)}
-                />
-                <Icon.Plus />
-                <h4>Drop files or tap to browse</h4>
-                <p>Images and videos · Max 50 MB each</p>
-              </div>
-
-              {uploadedFiles.length > 0 && (
-                <div className="mms-media-grid">
-                  {uploadedFiles.map((item, i) => (
-                    <div key={i} className="mms-media-thumb">
-                      {item.file.type.startsWith("image")
-                        ? <img src={item.url} alt="" />
-                        : <video src={item.url} />}
-                      <span className="mms-thumb-type">
-                        {item.file.type.startsWith("image") ? "IMG" : "VID"}
-                      </span>
-                      <button className="mms-thumb-remove" onClick={() => removeFile(i)}>×</button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-
-          {/* Upload progress */}
-          {submitting && progress > 0 && (
-            <div className="mms-progress-bar">
-              <div className="mms-progress-fill" style={{ width: `${progress}%` }} />
-            </div>
-          )}
-        </div>
       )}
 
       {/* ══════════════════════════════════════════════
@@ -1089,16 +1042,7 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
             )
           )}
 
-          {/* Media → Preview (disabled until recording complete for rec formats) */}
-          {step === S.MEDIA && !isText && (
-            <button
-              className="mms-btn-primary"
-              onClick={() => { setError(null); setStep(PREVIEW); }}
-              disabled={!canContinueMedia || submitting}
-            >
-              Preview →
-            </button>
-          )}
+
 
           {/* Preview → Submit */}
           {step === PREVIEW && (
