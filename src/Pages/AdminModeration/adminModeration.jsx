@@ -12,6 +12,7 @@ const STATUS_TABS = [
   { id: "", label: "All", icon: <Eye size={14} /> },
   { id: "APPROVED", label: "Approved", icon: <CheckCircle size={14} /> },
   { id: "REJECTED", label: "Rejected", icon: <XCircle size={14} /> },
+  { id: "GRC", label: "GRC (Private)", icon: <Shield size={14} /> },
 ];
 
 export default function AdminModeration() {
@@ -34,8 +35,13 @@ export default function AdminModeration() {
     try {
       setLoading(true);
       const params = { page, size: 10 };
-      if (statusFilter) params.status = statusFilter;
-      const res = await api.get("/api/admin/testimonies", { params });
+      let res;
+      if (statusFilter === "GRC") {
+        res = await api.get("/api/admin/testimonies/grc", { params });
+      } else {
+        if (statusFilter) params.status = statusFilter;
+        res = await api.get("/api/admin/testimonies", { params });
+      }
       setTestimonies(res.data.content || []);
       setTotalPages(res.data.totalPages || 0);
     } catch (err) {
@@ -167,6 +173,7 @@ export default function AdminModeration() {
                     <div className="mod-card-header-left">
                       <span className="mod-card-cat">{t.category?.name || "General"}</span>
                       <span className={`mod-card-status ${statusLower}`}>
+                        {t.isGrc && <span style={{color:'var(--gold)', marginRight:'8px'}}><Shield size={10} /> GRC</span>}
                         {statusLower === "approved" && <><CheckCircle size={10} /> Approved</>}
                         {statusLower === "pending" && <><Clock size={10} /> Pending</>}
                         {statusLower === "rejected" && <><XCircle size={10} /> Rejected</>}
