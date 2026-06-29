@@ -122,11 +122,12 @@ const S = {
 
 // ─── useRecorder hook ─────────────────────────────────────────────────────────
 function useRecorder(type /* "video" | "audio" */) {
-  const [recState, setRecState] = useState("idle"); // idle | recording | done
+  const [recState, setRecState] = useState("idle"); // idle | ready | recording | done
   const [elapsed,  setElapsed]  = useState(0);
   const [blobUrl,  setBlobUrl]  = useState(null);
   const [blobFile, setBlobFile] = useState(null);
   const [bars,     setBars]     = useState(Array(28).fill(8));
+  const [error,    setError]    = useState(null);
 
   const mediaRef    = useRef(null); // <video> element for cam preview
   const recorderRef = useRef(null);
@@ -149,17 +150,83 @@ function useRecorder(type /* "video" | "audio" */) {
     animRef.current = requestAnimationFrame(animateBars);
   }, []);
 
-  const start = async () => {
+  const stop = useCallback(() => {
+    clearInterval(timerRef.current);
+    cancelAnimationFrame(animRef.current);
+    try {
+      recorderRef.current?.stop();
+    } catch (e) {}
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+    if (mediaRef.current) mediaRef.current.srcObject = null;
+  }, []);
+
+  const init = useCallback(async () => {
+    setError(null);
     setBlobUrl(null);
     setBlobFile(null);
     setElapsed(0);
-    chunksRef.current = [];
+    
+    if (!window.isSecureContext) {
+      setError(`Camera/microphone access requires a secure connection (HTTPS).\nSince this site is accessed via HTTP (http://13.233.156.8), your browser blocks camera access.\n\nTo test this feature:\n1. Run the app on localhost, or\n2. Enable Chrome's insecure origins flag (chrome://flags/#unsafely-treat-insecure-origin-as-secure) and add "http://13.233.156.8" to the list.`);
+      setRecState("idle");
+      return;
+    }
+    
     try {
       const constraints =
         type === "video" ? { video: true, audio: true } : { audio: true };
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       streamRef.current = stream;
 
+      if (type === "video" && mediaRef.current) {
+        mediaRef.current.srcObject = stream;
+        mediaRef.current.play().catch(() => {});
+      }
+      setRecState("ready");
+    } catch (e) {
+      console.error(e);
+      setError(
+        type === "video"
+          ? "Could not access your camera or microphone. Please check browser permissions."
+          : "Could not access your microphone. Please check browser permissions."
+      );
+      setRecState("idle");
+    }
+  }, [type]);
+
+  const start = async () => {
+    setBlobUrl(null);
+    setBlobFile(null);
+    setElapsed(0);
+    setError(null);
+    chunksRef.current = [];
+
+    let stream = streamRef.current;
+    if (!stream) {
+      if (!window.isSecureContext) {
+        setError(`Camera/microphone access requires a secure connection (HTTPS).\nSince this site is accessed via HTTP (http://13.233.156.8), your browser blocks camera access.\n\nTo test this feature:\n1. Run the app on localhost, or\n2. Enable Chrome's insecure origins flag (chrome://flags/#unsafely-treat-insecure-origin-as-secure) and add "http://13.233.156.8" to the list.`);
+        return;
+      }
+      try {
+        const constraints =
+          type === "video" ? { video: true, audio: true } : { audio: true };
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+        streamRef.current = stream;
+      } catch (e) {
+        console.error(e);
+        setError(
+          type === "video"
+            ? "Could not access your camera or microphone. Please check browser permissions."
+            : "Could not access your microphone. Please check browser permissions."
+        );
+        return;
+      }
+    }
+
+    try {
       // Hook up audio analyser
       const ctx      = new AudioContext();
       const source   = ctx.createMediaStreamSource(stream);
@@ -169,7 +236,6 @@ function useRecorder(type /* "video" | "audio" */) {
       analyserRef.current = analyser;
       animRef.current = requestAnimationFrame(animateBars);
 
-      // Live camera preview
       if (type === "video" && mediaRef.current) {
         mediaRef.current.srcObject = stream;
         mediaRef.current.play().catch(() => {});
@@ -193,22 +259,11 @@ function useRecorder(type /* "video" | "audio" */) {
       recorder.start();
       setRecState("recording");
       timerRef.current = setInterval(() => setElapsed((s) => s + 1), 1000);
-    } catch {
-      alert(
-        type === "video"
-          ? "Could not access your camera or microphone. Please check browser permissions."
-          : "Could not access your microphone. Please check browser permissions."
-      );
+    } catch (e) {
+      console.error(e);
+      setError("Recording failed to start.");
     }
   };
-
-  const stop = useCallback(() => {
-    clearInterval(timerRef.current);
-    cancelAnimationFrame(animRef.current);
-    recorderRef.current?.stop();
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    if (mediaRef.current) mediaRef.current.srcObject = null;
-  }, []);
 
   const reset = () => {
     stop();
@@ -217,12 +272,13 @@ function useRecorder(type /* "video" | "audio" */) {
     setElapsed(0);
     setBars(Array(28).fill(8));
     setRecState("idle");
+    init();
   };
 
   const fmt = (s) =>
     `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
-  return { recState, elapsed, blobUrl, blobFile, bars, mediaRef, start, stop, reset, fmt };
+  return { recState, elapsed, blobUrl, blobFile, bars, error, mediaRef, start, stop, reset, init, fmt };
 }
 
 // ─── Waveform Component ───────────────────────────────────────────────────────
@@ -289,6 +345,10 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
 
   const [form, setForm] = useState({
     title: "", categoryId: "", country: "", church: "", zone: "", description: "",
+    state: "", city: "", fullName: "", telephoneNumber: "", age: "", gender: "",
+    conditionProblem: "", conditionDuration: "", unableToDoBefore: "",
+    whatHappenedDuringProgram: "", ableToDoNow: "", inviterOrNextOfKinDetails: "",
+    healingCentreLocation: "", attendeesAtVenue: "",
   });
   const [uploadedFiles, setUploadedFiles] = useState([]);
 
@@ -324,6 +384,20 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
             church: t.church || "",
             zone: t.zone || "",
             description: t.description || "",
+            state: t.state || "",
+            city: t.city || "",
+            fullName: t.fullName || "",
+            telephoneNumber: t.telephoneNumber || "",
+            age: t.age || "",
+            gender: t.gender || "",
+            conditionProblem: t.conditionProblem || "",
+            conditionDuration: t.conditionDuration || "",
+            unableToDoBefore: t.unableToDoBefore || "",
+            whatHappenedDuringProgram: t.whatHappenedDuringProgram || "",
+            ableToDoNow: t.ableToDoNow || "",
+            inviterOrNextOfKinDetails: t.inviterOrNextOfKinDetails || "",
+            healingCentreLocation: t.healingCentreLocation || "",
+            attendeesAtVenue: t.attendeesAtVenue || "",
           });
         })
         .catch((err) => {
@@ -349,6 +423,32 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
   const steps  = stepsFor(format?.id);
   const PREVIEW = S.PREVIEW;
   const DONE    = S.DONE;
+
+  // Auto-initialize and cleanup media streams based on stepper state
+  useEffect(() => {
+    if (step === S.STORY) {
+      if (format?.id === "record-video") {
+        videoRec.init();
+      } else {
+        videoRec.stop();
+      }
+      
+      if (format?.id === "record-audio") {
+        audioRec.init();
+      } else {
+        audioRec.stop();
+      }
+    } else {
+      videoRec.stop();
+      audioRec.stop();
+    }
+    
+    // Cleanup on unmount
+    return () => {
+      videoRec.stop();
+      audioRec.stop();
+    };
+  }, [step, format?.id]);
 
   const hasRequiredMedia =
     format?.id === "record-video"
@@ -379,27 +479,36 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
     try {
       let id = testimonyId;
       const finalDescription = form.description.trim() || `[${format?.label || "Media"} Testimony]`;
-      if (editId) {
-        await api.put(`${API.submit}/${editId}`, {
+        const reqBody = {
           title:       form.title,
           description: finalDescription,
           categoryId:  Number(form.categoryId),
           country:     form.country,
           church:      form.church,
           zone:        form.zone,
-        });
-        id = editId;
-      } else {
-        const res = await api.post(API.submit, {
-          title:       form.title,
-          description: finalDescription,
-          categoryId:  Number(form.categoryId),
-          country:     form.country,
-          church:      form.church,
-          zone:        form.zone,
-        });
-        id = res.data.id;
-      }
+          state:       form.state,
+          city:        form.city,
+          fullName:    form.fullName,
+          telephoneNumber: form.telephoneNumber,
+          age:         form.age ? Number(form.age) : null,
+          gender:      form.gender,
+          conditionProblem: form.conditionProblem,
+          conditionDuration: form.conditionDuration,
+          unableToDoBefore: form.unableToDoBefore,
+          whatHappenedDuringProgram: form.whatHappenedDuringProgram,
+          ableToDoNow: form.ableToDoNow,
+          inviterOrNextOfKinDetails: form.inviterOrNextOfKinDetails,
+          healingCentreLocation: form.healingCentreLocation,
+          attendeesAtVenue: form.attendeesAtVenue ? Number(form.attendeesAtVenue) : null,
+        };
+        
+        if (editId) {
+          await api.put(`${API.submit}/${editId}`, reqBody);
+          id = editId;
+        } else {
+          const res = await api.post(API.submit, reqBody);
+          id = res.data.id;
+        }
 
       setTestimonyId(id);
       setStep(PREVIEW);
@@ -762,14 +871,92 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
                 <input placeholder="Nigeria" value={form.country} onChange={(e) => set("country", e.target.value)} />
               </div>
               <div className="mms-field">
-                <label>Zone</label>
-                <input placeholder="Zone 4" value={form.zone} onChange={(e) => set("zone", e.target.value)} />
+                <label>State</label>
+                <input placeholder="e.g. Lagos" value={form.state} onChange={(e) => set("state", e.target.value)} />
+              </div>
+            </div>
+
+            <div className="mms-row">
+              <div className="mms-field">
+                <label>City</label>
+                <input placeholder="e.g. Ikeja" value={form.city} onChange={(e) => set("city", e.target.value)} />
+              </div>
+              <div className="mms-field">
+                <label>Zone / Network</label>
+                <input placeholder="e.g. Zone 4" value={form.zone} onChange={(e) => set("zone", e.target.value)} />
               </div>
             </div>
 
             <div className="mms-field">
-              <label>Church</label>
+              <label>Church / Affiliate</label>
               <input placeholder="Christ Embassy Lagos" value={form.church} onChange={(e) => set("church", e.target.value)} />
+            </div>
+
+            <div className="mms-row">
+              <div className="mms-field">
+                <label>Full Name</label>
+                <input placeholder="e.g. John Doe" value={form.fullName} onChange={(e) => set("fullName", e.target.value)} />
+              </div>
+              <div className="mms-field">
+                <label>Telephone Number (include country code)</label>
+                <input placeholder="+234..." value={form.telephoneNumber} onChange={(e) => set("telephoneNumber", e.target.value)} />
+              </div>
+            </div>
+
+            <div className="mms-row">
+              <div className="mms-field">
+                <label>Age</label>
+                <input type="number" placeholder="e.g. 35" value={form.age} onChange={(e) => set("age", e.target.value)} />
+              </div>
+              <div className="mms-field">
+                <label>Gender</label>
+                <select value={form.gender} onChange={(e) => set("gender", e.target.value)}>
+                  <option value="">Select Gender</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="mms-field">
+              <label>Condition/Problem</label>
+              <textarea rows={2} placeholder="Briefly describe the condition..." value={form.conditionProblem} onChange={(e) => set("conditionProblem", e.target.value)} />
+            </div>
+
+            <div className="mms-field">
+              <label>Duration of Condition/Problem</label>
+              <input placeholder="e.g. 5 years, 6 months" value={form.conditionDuration} onChange={(e) => set("conditionDuration", e.target.value)} />
+            </div>
+
+            <div className="mms-field">
+              <label>What could you not do before?</label>
+              <textarea rows={2} placeholder="Describe limitations..." value={form.unableToDoBefore} onChange={(e) => set("unableToDoBefore", e.target.value)} />
+            </div>
+
+            <div className="mms-field">
+              <label>What happened during the program?</label>
+              <textarea rows={3} placeholder="Describe the miracle..." value={form.whatHappenedDuringProgram} onChange={(e) => set("whatHappenedDuringProgram", e.target.value)} />
+            </div>
+
+            <div className="mms-field">
+              <label>What can you do now?</label>
+              <textarea rows={2} placeholder="Describe your current state..." value={form.ableToDoNow} onChange={(e) => set("ableToDoNow", e.target.value)} />
+            </div>
+
+            <div className="mms-field">
+              <label>Name & Contact of Person that invited you (or Next of Kin)</label>
+              <input placeholder="Details..." value={form.inviterOrNextOfKinDetails} onChange={(e) => set("inviterOrNextOfKinDetails", e.target.value)} />
+            </div>
+
+            <div className="mms-row">
+              <div className="mms-field">
+                <label>Location of Healing Centre/Crusade</label>
+                <input placeholder="e.g. Online, Center A" value={form.healingCentreLocation} onChange={(e) => set("healingCentreLocation", e.target.value)} />
+              </div>
+              <div className="mms-field">
+                <label>Number of attendees at Venue</label>
+                <input type="number" placeholder="e.g. 150" value={form.attendeesAtVenue} onChange={(e) => set("attendeesAtVenue", e.target.value)} />
+              </div>
             </div>
 
             <div className="mms-field">
@@ -807,6 +994,17 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
                   {format?.id === "upload" && "Upload Video File (Required)"}
                 </label>
 
+                {videoRec.error && (
+                  <div className="mms-error" style={{ whiteSpace: "pre-line", textAlign: "left", marginBottom: "16px" }}>
+                    {videoRec.error}
+                  </div>
+                )}
+                {audioRec.error && (
+                  <div className="mms-error" style={{ whiteSpace: "pre-line", textAlign: "left", marginBottom: "16px" }}>
+                    {audioRec.error}
+                  </div>
+                )}
+
                 {format?.id === "record-video" && (
                   <div className="mms-record-area">
                     {videoRec.recState !== "done" && (
@@ -815,7 +1013,7 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
                         muted
                         playsInline
                         className="mms-cam-preview"
-                        style={{ display: videoRec.recState === "recording" ? "block" : "none" }}
+                        style={{ display: (videoRec.recState === "ready" || videoRec.recState === "recording") ? "block" : "none" }}
                       />
                     )}
                     {videoRec.recState === "done" && videoRec.blobUrl && (
@@ -842,12 +1040,12 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
                             <div className="mms-rec-dot" />
                           </button>
                           <span className="mms-rec-hint">
-                            {videoRec.recState === "idle"
-                              ? "Tap to enable camera and start"
+                            {videoRec.recState === "idle" || videoRec.recState === "ready"
+                              ? "Tap to start recording"
                               : "Tap to stop recording"}
                           </span>
                         </div>
-                        {videoRec.recState === "idle" && (
+                        {(videoRec.recState === "idle" && !videoRec.error) && (
                           <p className="mms-perm-tip">
                             Your browser will request camera and microphone permission — please allow it to continue.
                           </p>
@@ -881,12 +1079,12 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
                             <div className="mms-rec-dot" />
                           </button>
                           <span className="mms-rec-hint">
-                            {audioRec.recState === "idle"
-                              ? "Tap to enable microphone and start"
+                            {audioRec.recState === "idle" || audioRec.recState === "ready"
+                              ? "Tap to start recording"
                               : "Tap to stop recording"}
                           </span>
                         </div>
-                        {audioRec.recState === "idle" && (
+                        {(audioRec.recState === "idle" && !audioRec.error) && (
                           <p className="mms-perm-tip">
                             Your browser will request microphone permission — please allow it to continue.
                           </p>
@@ -907,12 +1105,12 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
                       <input
                         type="file"
                         multiple
-                        accept="video/*"
+                        accept="video/*,image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                         onChange={(e) => addFiles(e.target.files)}
                       />
                       <Icon.Plus />
-                      <h4>Drop video file or tap to browse</h4>
-                      <p>Videos only · Max 50 MB</p>
+                      <h4>Drop video, pictures or medical report (PDF)</h4>
+                      <p>Videos, Images, PDFs · Max 50 MB</p>
                     </div>
 
                     {uploadedFiles.length > 0 && (
@@ -921,9 +1119,11 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
                           <div key={i} className="mms-media-thumb">
                             {item.file.type.startsWith("image")
                               ? <img src={item.url} alt="" />
-                              : <video src={item.url} />}
+                              : item.file.type.startsWith("video")
+                              ? <video src={item.url} />
+                              : <div style={{width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', background:'#eee', color:'#555'}}><Icon.Text /></div>}
                             <span className="mms-thumb-type">
-                              {item.file.type.startsWith("image") ? "IMG" : "VID"}
+                              {item.file.type.startsWith("image") ? "IMG" : item.file.type.startsWith("video") ? "VID" : "DOC"}
                             </span>
                             <button className="mms-thumb-remove" onClick={() => removeFile(i)}>×</button>
                           </div>

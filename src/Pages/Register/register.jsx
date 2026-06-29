@@ -8,11 +8,13 @@ export default function Register() {
   const [form, setForm] = useState({
     name: "",
     email: "",
-    phoneNumber: "",
     password: "",
     church: "",
     zone: "",
     country: "",
+    city: "",
+    securityQuestion: "",
+    securityAnswer: "",
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -20,13 +22,16 @@ export default function Register() {
   const [showKingschat, setShowKingschat] = useState(false);
   const [kingschatLoading, setKingschatLoading] = useState(false);
 
-  // Phone registration state
-  const [registerMethod, setRegisterMethod] = useState("email"); // "email" or "phone"
-  const [otpSent, setOtpSent] = useState(false);
-  const [otp, setOtp] = useState("");
-  const [serverOtp, setServerOtp] = useState("");
   const [tempKcEmail, setTempKcEmail] = useState("");
   const [tempKcName, setTempKcName] = useState("");
+
+  const SECURITY_QUESTIONS = [
+    "What is your mother's maiden name?",
+    "What city were you born in?",
+    "What was the name of your first pet?",
+    "What is your favorite book?",
+    "What is the name of the street you grew up on?"
+  ];
 
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
 
@@ -34,88 +39,32 @@ export default function Register() {
     e.preventDefault();
     setError("");
 
-    if (registerMethod === "email") {
-      if (
-        !form.name ||
-        !form.email ||
-        !form.password ||
-        !form.church ||
-        !form.zone ||
-        !form.country
-      ) {
-        setError("Please fill in all fields.");
-        return;
-      }
-
-      setLoading(true);
-      try {
-        const res = await api.post("/api/auth/register", {
-          name: form.name,
-          email: form.email,
-          password: form.password,
-          church: form.church,
-          zone: form.zone,
-          country: form.country,
-        });
-
-        // Save token and user details to localStorage
-        localStorage.setItem("token", res.data.token);
-        localStorage.setItem("user", JSON.stringify(res.data.user));
-
-        navigate("/");
-      } catch (err) {
-        setError(err.response?.data?.message || err.message || "Registration failed.");
-      } finally {
-        setLoading(false);
-      }
-    } else {
-      // Phone registration: Send OTP first
-      if (
-        !form.name ||
-        !form.phoneNumber ||
-        !form.church ||
-        !form.zone ||
-        !form.country
-      ) {
-        setError("Please fill in all fields.");
-        return;
-      }
-
-      setLoading(true);
-      try {
-        const res = await api.post("/api/auth/phone/send-otp", { phoneNumber: form.phoneNumber });
-        setOtpSent(true);
-        setServerOtp(res.data.code);
-      } catch (err) {
-        setError(err.response?.data?.message || err.message || "Failed to send OTP.");
-      } finally {
-        setLoading(false);
-      }
-    }
-  };
-
-  const handleVerifyOtp = async (e) => {
-    e.preventDefault();
-    setError("");
-    if (!otp) {
-      setError("Please enter the OTP code.");
+    if (
+      !form.name ||
+      !form.email ||
+      !form.password ||
+      !form.church ||
+      !form.zone ||
+      !form.country ||
+      !form.city ||
+      !form.securityQuestion ||
+      !form.securityAnswer
+    ) {
+      setError("Please fill in all fields.");
       return;
     }
+
     setLoading(true);
     try {
-      const res = await api.post("/api/auth/phone/verify-otp", {
-        phoneNumber: form.phoneNumber,
-        otpCode: otp,
-        name: form.name,
-        church: form.church,
-        zone: form.zone,
-        country: form.country,
-      });
+      const res = await api.post("/api/auth/register", form);
+
+      // Save token and user details to localStorage
       localStorage.setItem("token", res.data.token);
       localStorage.setItem("user", JSON.stringify(res.data.user));
+
       navigate("/");
     } catch (err) {
-      setError(err.response?.data?.message || err.message || "OTP verification failed.");
+      setError(err.response?.data?.message || err.message || "Registration failed.");
     } finally {
       setLoading(false);
     }
@@ -154,7 +103,7 @@ export default function Register() {
 
   return (
     <div className="register-page">
-      <div className="auth-card">
+      <div className="auth-card" style={{ maxWidth: '600px' }}>
         <div className="auth-logo">
           <span className="logo-icon">✨</span>
           <h2>My Miracle Story</h2>
@@ -164,99 +113,42 @@ export default function Register() {
 
         {error && <div className="auth-error">{error}</div>}
 
-        <div className="auth-tabs">
-          <button
-            type="button"
-            className={`auth-tab ${registerMethod === "email" ? "active" : ""}`}
-            onClick={() => { setRegisterMethod("email"); setError(""); }}
-          >
-            Email Register
-          </button>
-          <button
-            type="button"
-            className={`auth-tab ${registerMethod === "phone" ? "active" : ""}`}
-            onClick={() => { setRegisterMethod("phone"); setError(""); }}
-          >
-            Phone Register
-          </button>
-        </div>
+        <form onSubmit={handleSubmit}>
+          <div className="auth-field">
+            <label>Full Name</label>
+            <input
+              type="text"
+              placeholder="John Doe"
+              value={form.name}
+              onChange={(e) => set("name", e.target.value)}
+              disabled={loading}
+            />
+          </div>
+          
+          <div className="auth-field">
+            <label>Email</label>
+            <input
+              type="email"
+              placeholder="you@example.com"
+              value={form.email}
+              onChange={(e) => set("email", e.target.value)}
+              disabled={loading}
+            />
+          </div>
+          
+          <div className="auth-field">
+            <label>Password</label>
+            <input
+              type="password"
+              placeholder="••••••••"
+              value={form.password}
+              onChange={(e) => set("password", e.target.value)}
+              disabled={loading}
+            />
+          </div>
 
-        {otpSent ? (
-          <form onSubmit={handleVerifyOtp}>
-            <div className="auth-field">
-              <label>Verification Code (OTP)</label>
-              <input
-                type="text"
-                placeholder="Enter 6-digit code"
-                value={otp}
-                onChange={(e) => setOtp(e.target.value)}
-                disabled={loading}
-              />
-              {serverOtp && (
-                <small className="otp-debug">
-                  Debug Test OTP Code: {serverOtp}
-                </small>
-              )}
-            </div>
-            <button type="submit" className="auth-btn" disabled={loading}>
-              {loading ? "Verifying..." : "Verify & Register"}
-            </button>
-            <button
-              type="button"
-              className="auth-btn-secondary"
-              onClick={() => { setOtpSent(false); setOtp(""); }}
-            >
-              Back to Form
-            </button>
-          </form>
-        ) : (
-          <form onSubmit={handleSubmit}>
-            <div className="auth-field">
-              <label>Full Name</label>
-              <input
-                type="text"
-                placeholder="John Doe"
-                value={form.name}
-                onChange={(e) => set("name", e.target.value)}
-                disabled={loading}
-              />
-            </div>
-            {registerMethod === "email" ? (
-              <>
-                <div className="auth-field">
-                  <label>Email</label>
-                  <input
-                    type="email"
-                    placeholder="you@example.com"
-                    value={form.email}
-                    onChange={(e) => set("email", e.target.value)}
-                    disabled={loading}
-                  />
-                </div>
-                <div className="auth-field">
-                  <label>Password</label>
-                  <input
-                    type="password"
-                    placeholder="••••••••"
-                    value={form.password}
-                    onChange={(e) => set("password", e.target.value)}
-                    disabled={loading}
-                  />
-                </div>
-              </>
-            ) : (
-              <div className="auth-field">
-                <label>Phone Number</label>
-                <input
-                  type="tel"
-                  placeholder="e.g. +919876543210"
-                  value={form.phoneNumber}
-                  onChange={(e) => set("phoneNumber", e.target.value)}
-                  disabled={loading}
-                />
-              </div>
-            )}
-            <div className="auth-field">
+          <div style={{ display: 'flex', gap: '15px' }}>
+            <div className="auth-field" style={{ flex: 1 }}>
               <label>Country</label>
               <input
                 type="text"
@@ -266,7 +158,20 @@ export default function Register() {
                 disabled={loading}
               />
             </div>
-            <div className="auth-field">
+            <div className="auth-field" style={{ flex: 1 }}>
+              <label>City</label>
+              <input
+                type="text"
+                placeholder="e.g. Mumbai"
+                value={form.city}
+                onChange={(e) => set("city", e.target.value)}
+                disabled={loading}
+              />
+            </div>
+          </div>
+          
+          <div style={{ display: 'flex', gap: '15px' }}>
+            <div className="auth-field" style={{ flex: 1 }}>
               <label>Zone</label>
               <input
                 type="text"
@@ -276,7 +181,7 @@ export default function Register() {
                 disabled={loading}
               />
             </div>
-            <div className="auth-field">
+            <div className="auth-field" style={{ flex: 1 }}>
               <label>Church</label>
               <input
                 type="text"
@@ -286,11 +191,46 @@ export default function Register() {
                 disabled={loading}
               />
             </div>
-            <button type="submit" className="auth-btn" disabled={loading}>
-              {loading ? "Processing..." : registerMethod === "email" ? "Create Account" : "Send Verification OTP"}
-            </button>
-          </form>
-        )}
+          </div>
+
+          <div className="auth-field">
+            <label>Security Question (for password reset)</label>
+            <select
+              value={form.securityQuestion}
+              onChange={(e) => set("securityQuestion", e.target.value)}
+              disabled={loading}
+              style={{
+                width: '100%',
+                padding: '12px',
+                border: '1px solid var(--border-color)',
+                borderRadius: '8px',
+                backgroundColor: 'var(--surface-color)',
+                color: 'var(--text-color)',
+                marginBottom: '10px'
+              }}
+            >
+              <option value="">Select a security question</option>
+              {SECURITY_QUESTIONS.map((q, i) => (
+                <option key={i} value={q}>{q}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="auth-field">
+            <label>Security Answer</label>
+            <input
+              type="text"
+              placeholder="Your answer"
+              value={form.securityAnswer}
+              onChange={(e) => set("securityAnswer", e.target.value)}
+              disabled={loading}
+            />
+          </div>
+
+          <button type="submit" className="auth-btn" disabled={loading} style={{ marginTop: '10px' }}>
+            {loading ? "Processing..." : "Create Account"}
+          </button>
+        </form>
 
         <div className="auth-divider">
           <span>OR</span>

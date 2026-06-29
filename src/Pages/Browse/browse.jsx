@@ -234,24 +234,34 @@ const Browse = () => {
     }));
   }, [testimonies]);
 
+  const [activeCountry, setActiveCountry] = useState("All");
+
+  const countries = useMemo(() => {
+    const uniqueCountries = new Set(testimonies.map(t => t.country).filter(Boolean));
+    return ["All", ...Array.from(uniqueCountries)];
+  }, [testimonies]);
+
   const filteredRows = useMemo(() => {
     return testimonyRows.filter(
       (row) => activeCategory === "All" || row.category === activeCategory
     ).map((row) => ({
       ...row,
-      items: query.trim()
-        ? row.items.filter((i) => i.title.toLowerCase().includes(query.toLowerCase()))
-        : row.items,
+      items: row.items.filter((i) => {
+        const matchQuery = !query.trim() || i.title.toLowerCase().includes(query.toLowerCase());
+        const matchCountry = activeCountry === "All" || i.location === activeCountry;
+        return matchQuery && matchCountry;
+      })
     })).filter((row) => row.items.length > 0);
-  }, [testimonyRows, activeCategory, query]);
+  }, [testimonyRows, activeCategory, query, activeCountry]);
 
   const filteredFeed = useMemo(() => {
     return recentFeed.filter(
       (item) =>
         (activeCategory === "All" || item.category === activeCategory) &&
-        (!query.trim() || item.title.toLowerCase().includes(query.toLowerCase()))
+        (!query.trim() || item.title.toLowerCase().includes(query.toLowerCase())) &&
+        (activeCountry === "All" || item.location === activeCountry)
     );
-  }, [recentFeed, activeCategory, query]);
+  }, [recentFeed, activeCategory, query, activeCountry]);
 
   return (
     <div className="browse-page">
@@ -283,6 +293,18 @@ const Browse = () => {
         </div>
 
         <div className="browse-filters">
+          <select 
+            value={activeCountry} 
+            onChange={(e) => setActiveCountry(e.target.value)}
+            style={{ padding: '8px 12px', borderRadius: '20px', border: '1px solid #ccc', backgroundColor: '#fff', fontSize: '0.9rem', outline: 'none', cursor: 'pointer', marginRight: '10px' }}
+          >
+            {countries.map(country => (
+              <option key={country} value={country}>
+                {country === "All" ? "All Countries" : country}
+              </option>
+            ))}
+          </select>
+
           {categories.map((cat) => (
             <button
               key={cat}

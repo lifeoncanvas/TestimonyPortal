@@ -11,12 +11,6 @@ export default function Login() {
   const [showKingschat, setShowKingschat] = useState(false);
   const [kingschatLoading, setKingschatLoading] = useState(false);
 
-  // Phone Login State
-  const [loginMethod, setLoginMethod] = useState("email"); // "email" or "phone"
-  const [phone, setPhone] = useState("");
-  const [otp, setOtp] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
-  const [serverOtp, setServerOtp] = useState("");
   const [tempKcEmail, setTempKcEmail] = useState("");
   const [tempKcName, setTempKcName] = useState("");
 
@@ -44,48 +38,6 @@ export default function Login() {
       navigate("/");
     } catch (err) {
       setError(err.response?.data?.message || err.message || "Invalid credentials.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSendOtp = async (e) => {
-    e.preventDefault();
-    setError("");
-    if (!phone) {
-      setError("Please enter your phone number.");
-      return;
-    }
-    setLoading(true);
-    try {
-      const res = await api.post("/api/auth/phone/send-otp", { phoneNumber: phone });
-      setOtpSent(true);
-      setServerOtp(res.data.code);
-    } catch (err) {
-      setError(err.response?.data?.message || err.message || "Failed to send OTP.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerifyOtp = async (e) => {
-    e.preventDefault();
-    setError("");
-    if (!otp) {
-      setError("Please enter the OTP code.");
-      return;
-    }
-    setLoading(true);
-    try {
-      const res = await api.post("/api/auth/phone/verify-otp", {
-        phoneNumber: phone,
-        otpCode: otp
-      });
-      localStorage.setItem("token", res.data.token);
-      localStorage.setItem("user", JSON.stringify(res.data.user));
-      navigate("/");
-    } catch (err) {
-      setError(err.response?.data?.message || err.message || "Invalid OTP code.");
     } finally {
       setLoading(false);
     }
@@ -121,6 +73,11 @@ export default function Login() {
   const kcName = tempKcName || (kcEmail === "kingschat_tester@kingschat.com"
     ? "KingsChat Member"
     : kcEmail.split("@")[0].charAt(0).toUpperCase() + kcEmail.split("@")[0].slice(1));
+  const [loginMethod, setLoginMethod] = useState(null); // null, 'email', 'phone'
+
+  const toggleMethod = (method) => {
+    setLoginMethod((prev) => (prev === method ? null : method));
+  };
 
   return (
     <div className="login-page">
@@ -134,111 +91,88 @@ export default function Login() {
 
         {error && <div className="auth-error">{error}</div>}
 
-        <div className="auth-tabs">
+        <div className="auth-buttons-stack" style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '20px' }}>
           <button
             type="button"
-            className={`auth-tab ${loginMethod === "email" ? "active" : ""}`}
-            onClick={() => { setLoginMethod("email"); setError(""); }}
+            className="kc-login-btn"
+            style={{ backgroundColor: '#5476ea', color: 'white', padding: '15px', borderRadius: '10px', border: 'none', fontWeight: 'bold', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+            onClick={() => setShowKingschat(true)}
+            disabled={loading}
           >
-            Email Login
+            <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><span className="kc-logo" style={{ fontSize: '1.2rem', opacity: 0.7 }}>💬</span> SIGN IN WITH KINGSCHAT</span>
+            <span>→</span>
           </button>
-          <button
-            type="button"
-            className={`auth-tab ${loginMethod === "phone" ? "active" : ""}`}
-            onClick={() => { setLoginMethod("phone"); setError(""); }}
-          >
-            Phone Login
-          </button>
-        </div>
 
-        {loginMethod === "email" ? (
-          <form onSubmit={handleSubmit}>
-            <div className="auth-field">
-              <label>Email</label>
-              <input
-                type="email"
-                placeholder="you@example.com"
-                value={form.email}
-                onChange={(e) => set("email", e.target.value)}
-                disabled={loading}
-              />
-            </div>
-            <div className="auth-field">
-              <label>Password</label>
-              <input
-                type="password"
-                placeholder="••••••••"
-                value={form.password}
-                onChange={(e) => set("password", e.target.value)}
-                disabled={loading}
-              />
-            </div>
-            <button type="submit" className="auth-btn" disabled={loading}>
-              {loading ? "Signing In..." : "Sign In"}
+          <div className="method-dropdown">
+            <button
+              type="button"
+              className="email-login-btn"
+              style={{ backgroundColor: '#292c53', color: 'white', padding: '15px', borderRadius: '10px', border: 'none', fontWeight: 'bold', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', width: '100%' }}
+              onClick={() => toggleMethod('email')}
+              disabled={loading}
+            >
+              <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><span style={{ display: 'inline-block', width: '18px', height: '18px', backgroundColor: 'white', borderRadius: '3px' }}></span> SIGN IN WITH EMAIL</span>
+              <span>▼</span>
             </button>
-          </form>
-        ) : (
-          <form onSubmit={otpSent ? handleVerifyOtp : handleSendOtp}>
-            <div className="auth-field">
-              <label>Phone Number</label>
-              <input
-                type="tel"
-                placeholder="e.g. +919876543210"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                disabled={loading || otpSent}
-              />
-            </div>
-            {otpSent && (
-              <>
+            {loginMethod === 'email' && (
+              <form onSubmit={handleSubmit} style={{ marginTop: '15px', padding: '10px', border: '1px solid #eee', borderRadius: '8px' }}>
                 <div className="auth-field">
-                  <label>Verification Code (OTP)</label>
+                  <label>Email</label>
                   <input
-                    type="text"
-                    placeholder="Enter 6-digit code"
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value)}
+                    type="email"
+                    placeholder="you@example.com"
+                    value={form.email}
+                    onChange={(e) => set("email", e.target.value)}
                     disabled={loading}
                   />
-                  {serverOtp && (
-                    <small className="otp-debug">
-                      Debug Test OTP Code: {serverOtp}
-                    </small>
-                  )}
                 </div>
-              </>
+                <div className="auth-field">
+                  <label>Password</label>
+                  <input
+                    type="password"
+                    placeholder="••••••••"
+                    value={form.password}
+                    onChange={(e) => set("password", e.target.value)}
+                    disabled={loading}
+                  />
+                </div>
+                <div className="auth-forgot-password" style={{ textAlign: 'right', marginBottom: '15px' }}>
+                  <span 
+                    onClick={() => navigate("/forgot-password")} 
+                    style={{ cursor: 'pointer', color: '#007bff', fontSize: '0.9rem' }}
+                  >
+                    Forgot Password?
+                  </span>
+                </div>
+                <button type="submit" className="auth-btn" disabled={loading}>
+                  {loading ? "Signing In..." : "Sign In"}
+                </button>
+              </form>
             )}
-            <button type="submit" className="auth-btn" disabled={loading}>
-              {loading ? "Processing..." : otpSent ? "Verify & Sign In" : "Send OTP"}
-            </button>
-            {otpSent && (
-              <button
-                type="button"
-                className="auth-btn-secondary"
-                onClick={() => { setOtpSent(false); setOtp(""); }}
-              >
-                Change Phone Number
-              </button>
-            )}
-          </form>
-        )}
+          </div>
 
-        <div className="auth-divider">
-          <span>OR</span>
+          <div className="method-dropdown">
+            <button
+              type="button"
+              className="phone-login-btn"
+              style={{ backgroundColor: '#567030', color: 'white', padding: '15px', borderRadius: '10px', border: 'none', fontWeight: 'bold', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', width: '100%' }}
+              onClick={() => toggleMethod('phone')}
+              disabled={loading}
+            >
+              <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><span style={{ fontSize: '1.2rem' }}>📞</span> SIGN IN WITH PHONE</span>
+              <span>▼</span>
+            </button>
+            {loginMethod === 'phone' && (
+              <div style={{ marginTop: '15px', padding: '20px', border: '1px solid #eee', borderRadius: '8px', textAlign: 'center', color: '#666' }}>
+                Phone login coming soon
+              </div>
+            )}
+          </div>
         </div>
 
-        <button
-          type="button"
-          className="kingschat-btn"
-          onClick={() => setShowKingschat(true)}
-          disabled={loading}
-        >
-          <span className="kc-logo">💬</span> Sign In with KingsChat
-        </button>
-
-        <p className="auth-switch">
+        <p className="auth-switch" style={{ marginTop: '30px' }}>
           Don't have an account?{" "}
-          <span onClick={() => navigate("/register")}>Register</span>
+          <span onClick={() => navigate("/register")} style={{ color: '#5476ea', fontWeight: 'bold', cursor: 'pointer' }}>Sign up here →</span>
         </p>
       </div>
 
@@ -303,4 +237,3 @@ export default function Login() {
     </div>
   );
 }
-
