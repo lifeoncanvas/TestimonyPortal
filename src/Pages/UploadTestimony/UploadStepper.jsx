@@ -333,7 +333,7 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
   const [editId,     setEditId]     = useState(null);
 
   const [form, setForm] = useState({
-    title: "", categoryId: "", country: "", zone: "", description: "",
+    title: "", categoryId: "", country: "", description: "",
     state: "", city: "", fullName: "", telephoneNumber: "", age: "", gender: "",
     conditionProblem: "", conditionDuration: "", unableToDoBefore: "",
     whatHappenedDuringProgram: "", ableToDoNow: "", inviterOrNextOfKinDetails: "",
@@ -347,16 +347,6 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
   // ── Fetch categories from API on mount
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
-    const zoneParam = searchParams.get("zone") || "";
-    const churchParam = searchParams.get("church") || "";
-    if (zoneParam || churchParam) {
-      setForm((prev) => ({
-        ...prev,
-        zone: prev.zone || zoneParam,
-        church: prev.church || churchParam,
-      }));
-    }
-
     const editParam = searchParams.get("edit");
     if (editParam) {
       const id = Number(editParam);
@@ -370,8 +360,6 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
             title: t.title || "",
             categoryId: t.category?.id ? String(t.category.id) : "",
             country: t.country || "",
-            church: t.church || "",
-            zone: t.zone || "",
             description: t.description || "",
             state: t.state || "",
             city: t.city || "",
@@ -474,8 +462,6 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
           description: finalDescription,
           categoryId:  Number(form.categoryId),
           country:     form.country,
-          church:      form.church,
-          zone:        form.zone,
           state:       form.state,
           city:        form.city,
           fullName:    form.fullName,
@@ -570,8 +556,6 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
         const descIdx = headers.indexOf("description");
         const catIdx = headers.indexOf("category");
         const countryIdx = headers.indexOf("country");
-        const churchIdx = headers.indexOf("church");
-        const zoneIdx = headers.indexOf("zone");
 
         if (titleIdx === -1 || descIdx === -1) {
           setError("CSV must contain at least 'title' and 'description' columns.");
