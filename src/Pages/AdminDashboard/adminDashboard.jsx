@@ -14,7 +14,7 @@ export default function AdminDashboard() {
   const [selectedTestimony, setSelectedTestimony] = useState(null);
   const [pending, setPending] = useState([]);
   const [selectedStat, setSelectedStat] = useState(null);
-  const [statData, setStatData] = useState([]);
+  const [statData, setStatData] = useState({});
   const [statLoading, setStatLoading] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -55,6 +55,7 @@ export default function AdminDashboard() {
   };
 
   const handleStatClick = (key) => {
+    console.log('Stat clicked:', key, 'Dashboard data:', dashboard);
     setSelectedStat(key);
     setStatLoading(true);
     // Use the already-fetched dashboard data to extract the appropriate field
@@ -73,7 +74,7 @@ export default function AdminDashboard() {
     if (value !== undefined) {
       setStatData({ [field]: value });
     } else {
-      setStatData({ message: `No detailed data available for ${key}.` });
+      setStatData({}); // empty object to trigger fallback UI
     }
     setStatLoading(false);
   };
@@ -111,7 +112,7 @@ export default function AdminDashboard() {
     { key: "rejected", icon: <XCircle size={20} />, value: dashboard?.rejectedTestimonies || 0, label: "Rejected", gradient: "linear-gradient(135deg, #fa709a, #fee140)" },
     { key: "categories", icon: <Layers size={20} />, value: dashboard?.totalCategories || 0, label: "Categories", gradient: "linear-gradient(135deg, #a18cd1, #fbc2eb)" },
     { key: "likes", icon: <Heart size={20} />, value: dashboard?.totalLikes || 0, label: "Total Likes", gradient: "linear-gradient(135deg, #ff9a9e, #fecfef)" },
-    { key: "comments", icon: <MessageCircle size={20} />, value: dashboard?.totalComments || 0, label: "Comments", gradient: "linear-gradient(135deg, #84fab0, #8fd3f4)" },
+    { key: "comments", icon: <MessageCircle size={20} />, value: dashboard?.totalComments || 0, label: "Total Comments", gradient: "linear-gradient(135deg, #84fab0, #8fd3f4)" },
   ];
 
   return (
@@ -147,18 +148,18 @@ export default function AdminDashboard() {
 
       {/* Selected Stat Details */}
       {selectedStat && (
-        <section className="admin-stat-details">
-          <h2 className="admin-section-title"><MessageCircle size={16} /> {selectedStat.charAt(0).toUpperCase() + selectedStat.slice(1)} Details</h2>
+        <section className="admin-stat-details" style={{ marginTop: '20px', padding: '10px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
+          <h2 className="admin-section-title" style={{ color: '#fff' }}><MessageCircle size={16} /> {selectedStat.charAt(0).toUpperCase() + selectedStat.slice(1)} Details</h2>
           {statLoading ? (
-            <p>Loading...</p>
+            <p style={{ color: '#ddd' }}>Loading...</p>
           ) : (
             <div className="admin-stat-info">
-              {statData && typeof statData === 'object' && !Array.isArray(statData) ? (
+              {statData && Object.keys(statData).length > 0 ? (
                 Object.entries(statData).map(([k, v]) => (
-                  <p key={k}><strong>{k}:</strong> {v?.toString()}</p>
+                  <p key={k} style={{ color: '#eee' }}><strong>{k}:</strong> {v?.toString()}</p>
                 ))
               ) : (
-                <p>{statData?.message || String(statData)}</p>
+                <p style={{ color: '#aaa' }}>No data available for {selectedStat}.</p>
               )}
             </div>
           )}
