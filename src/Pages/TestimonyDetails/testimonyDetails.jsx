@@ -122,6 +122,16 @@ export default function TestimonyDetail() {
   // Audio simulation or real play
   const hasAudio = testimony?.media?.some(m => m.mediaType === "AUDIO");
   const audioFile = testimony?.media?.find(m => m.mediaType === "AUDIO");
+  const hasVideo = testimony?.media?.some(m => m.mediaType === "VIDEO");
+  const videoFile = testimony?.media?.find(m => m.mediaType === "VIDEO");
+  const hasImage = testimony?.media?.some(m => m.mediaType === "IMAGE");
+  const imageFile = testimony?.media?.find(m => m.mediaType === "IMAGE");
+
+  const getMediaUrl = (m) => {
+    if (!m?.fileUrl) return "";
+    if (m.fileUrl.startsWith("http")) return m.fileUrl;
+    return (api.defaults.baseURL || "") + m.fileUrl;
+  };
 
   useEffect(() => {
     if (playing) {
@@ -296,7 +306,16 @@ export default function TestimonyDetail() {
           </button>
         </div>
 
-        {hasAudio && (
+        {hasVideo ? (
+          <div className="td-player-center">
+            <video 
+              controls 
+              src={getMediaUrl(videoFile)}
+              className="td-media-video"
+              style={{ width: "100%", maxHeight: "350px", objectFit: "cover", borderRadius: "12px", background: "#000" }}
+            />
+          </div>
+        ) : hasAudio ? (
           <div className="td-player-center">
             <span className="td-media-label">Audio Testimony</span>
             <button
@@ -315,9 +334,17 @@ export default function TestimonyDetail() {
                 <span>3:00</span>
               </div>
             </div>
-            {audioFile && <audio ref={audioRef} src={api.defaults.baseURL + audioFile.fileUrl} style={{ display: "none" }} />}
+            {audioFile && <audio ref={audioRef} src={getMediaUrl(audioFile)} style={{ display: "none" }} />}
           </div>
-        )}
+        ) : hasImage ? (
+          <div className="td-player-center" style={{ width: "100%", height: "100%" }}>
+            <img 
+              src={getMediaUrl(imageFile)} 
+              alt="Testimony" 
+              style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.8 }} 
+            />
+          </div>
+        ) : null}
       </div>
 
       <div className="td-body">
