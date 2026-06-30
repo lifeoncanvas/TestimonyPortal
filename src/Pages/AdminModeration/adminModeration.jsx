@@ -619,6 +619,9 @@ export default function AdminModeration() {
                         <XCircle size={13} /> Reject
                       </button>
                     )}
+                    <button className="mod-btn delete" onClick={() => handleDelete(t.id)} style={{ background: "rgba(231, 76, 60, 0.1)", color: "#e74c3c", border: "1px solid rgba(231, 76, 60, 0.2)" }}>
+                      <Trash2 size={13} /> Delete
+                    </button>
                     <button
                       className={`mod-btn toggle ${t.isFeatured ? "active" : ""}`}
                       onClick={() => handleToggleFeatured(t.id)}
