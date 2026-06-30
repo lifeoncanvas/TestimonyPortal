@@ -42,15 +42,16 @@ export default function AdminDashboard() {
     }
   };
 
+  // For now, all stat clicks pull the dashboard summary as a simple way to show data
   const endpointMap = {
-    users: "users",
-    testimonies: "testimonies",
-    pending: "testimonies/pending?size=5",
-    approved: "testimonies/approved?size=5",
-    rejected: "testimonies/rejected?size=5",
-    categories: "categories",
-    likes: "likes",
-    comments: "comments",
+    users: "dashboard",
+    testimonies: "dashboard",
+    pending: "dashboard",
+    approved: "dashboard",
+    rejected: "dashboard",
+    categories: "dashboard",
+    likes: "dashboard",
+    comments: "dashboard",
   };
 
   const handleStatClick = async (key) => {
@@ -58,10 +59,28 @@ export default function AdminDashboard() {
     setStatLoading(true);
     try {
       const res = await api.get(`/api/admin/${endpointMap[key]}`);
-      setStatData(res.data);
+      // If we fetched the dashboard, pick the relevant field to display
+      let data = res.data;
+      if (endpointMap[key] === "dashboard") {
+        // Extract the field that matches the stat key where possible
+        const fieldMap = {
+          users: "totalUsers",
+          testimonies: "totalTestimonies",
+          pending: "pendingTestimonies",
+          approved: "approvedTestimonies",
+          rejected: "rejectedTestimonies",
+          categories: "totalCategories",
+          likes: "totalLikes",
+          comments: "totalComments",
+        };
+        const field = fieldMap[key];
+        data = { [field]: data[field] };
+      }
+      setStatData(data);
     } catch (err) {
       console.error(`Error fetching ${key}:`, err);
-      setStatData([]);
+      // Fallback placeholder when specific endpoint is unavailable
+      setStatData({ message: `No detailed data available for ${key}.` });
     } finally {
       setStatLoading(false);
     }
