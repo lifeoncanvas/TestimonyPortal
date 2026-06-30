@@ -13,6 +13,9 @@ export default function AdminDashboard() {
   const [dashboard, setDashboard] = useState(null);
   const [selectedTestimony, setSelectedTestimony] = useState(null);
   const [pending, setPending] = useState([]);
+  const [selectedStat, setSelectedStat] = useState(null);
+  const [statData, setStatData] = useState([]);
+  const [statLoading, setStatLoading] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -36,6 +39,31 @@ export default function AdminDashboard() {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const endpointMap = {
+    users: "users",
+    testimonies: "testimonies",
+    pending: "testimonies/pending?size=5",
+    approved: "testimonies/approved?size=5",
+    rejected: "testimonies/rejected?size=5",
+    categories: "categories",
+    likes: "likes",
+    comments: "comments",
+  };
+
+  const handleStatClick = async (key) => {
+    setSelectedStat(key);
+    setStatLoading(true);
+    try {
+      const res = await api.get(`/api/admin/${endpointMap[key]}`);
+      setStatData(res.data);
+    } catch (err) {
+      console.error(`Error fetching ${key}:`, err);
+      setStatData([]);
+    } finally {
+      setStatLoading(false);
     }
   };
 
@@ -65,14 +93,14 @@ export default function AdminDashboard() {
   }
 
   const stats = [
-    { icon: <Users size={20} />, value: dashboard?.totalUsers || 0, label: "Total Users", gradient: "linear-gradient(135deg, #667eea, #764ba2)" },
-    { icon: <FileText size={20} />, value: dashboard?.totalTestimonies || 0, label: "Testimonies", gradient: "linear-gradient(135deg, #f093fb, #f5576c)" },
-    { icon: <Clock size={20} />, value: dashboard?.pendingTestimonies || 0, label: "Pending", gradient: "linear-gradient(135deg, #fccb90, #d57eeb)" },
-    { icon: <CheckCircle size={20} />, value: dashboard?.approvedTestimonies || 0, label: "Approved", gradient: "linear-gradient(135deg, #4facfe, #00f2fe)" },
-    { icon: <XCircle size={20} />, value: dashboard?.rejectedTestimonies || 0, label: "Rejected", gradient: "linear-gradient(135deg, #fa709a, #fee140)" },
-    { icon: <Layers size={20} />, value: dashboard?.totalCategories || 0, label: "Categories", gradient: "linear-gradient(135deg, #a18cd1, #fbc2eb)" },
-    { icon: <Heart size={20} />, value: dashboard?.totalLikes || 0, label: "Total Likes", gradient: "linear-gradient(135deg, #ff9a9e, #fecfef)" },
-    { icon: <MessageCircle size={20} />, value: dashboard?.totalComments || 0, label: "Comments", gradient: "linear-gradient(135deg, #84fab0, #8fd3f4)" },
+    { key: "users", icon: <Users size={20} />, value: dashboard?.totalUsers || 0, label: "Total Users", gradient: "linear-gradient(135deg, #667eea, #764ba2)" },
+    { key: "testimonies", icon: <FileText size={20} />, value: dashboard?.totalTestimonies || 0, label: "Testimonies", gradient: "linear-gradient(135deg, #f093fb, #f5576c)" },
+    { key: "pending", icon: <Clock size={20} />, value: dashboard?.pendingTestimonies || 0, label: "Pending", gradient: "linear-gradient(135deg, #fccb90, #d57eeb)" },
+    { key: "approved", icon: <CheckCircle size={20} />, value: dashboard?.approvedTestimonies || 0, label: "Approved", gradient: "linear-gradient(135deg, #4facfe, #00f2fe)" },
+    { key: "rejected", icon: <XCircle size={20} />, value: dashboard?.rejectedTestimonies || 0, label: "Rejected", gradient: "linear-gradient(135deg, #fa709a, #fee140)" },
+    { key: "categories", icon: <Layers size={20} />, value: dashboard?.totalCategories || 0, label: "Categories", gradient: "linear-gradient(135deg, #a18cd1, #fbc2eb)" },
+    { key: "likes", icon: <Heart size={20} />, value: dashboard?.totalLikes || 0, label: "Total Likes", gradient: "linear-gradient(135deg, #ff9a9e, #fecfef)" },
+    { key: "comments", icon: <MessageCircle size={20} />, value: dashboard?.totalComments || 0, label: "Comments", gradient: "linear-gradient(135deg, #84fab0, #8fd3f4)" },
   ];
 
   return (
@@ -93,13 +121,30 @@ export default function AdminDashboard() {
       {/* Stats Grid */}
       <section className="admin-stats-grid">
         {stats.map((s, i) => (
-          <div key={i} className="admin-stat-card" style={{ "--card-gradient": s.gradient }}>
+          <div
+            key={i}
+            className="admin-stat-card"
+            style={{ "--card-gradient": s.gradient }}
+            onClick={() => handleStatClick(s.key)}
+          >
             <div className="admin-stat-icon">{s.icon}</div>
             <p className="admin-stat-value">{s.value.toLocaleString()}</p>
             <p className="admin-stat-label">{s.label}</p>
           </div>
         ))}
       </section>
+
+      {/* Selected Stat Details */}
+      {selectedStat && (
+        <section className="admin-stat-details">
+          <h2 className="admin-section-title"><MessageCircle size={16} /> {selectedStat.charAt(0).toUpperCase() + selectedStat.slice(1)} Details</h2>
+          {statLoading ? (
+            <p>Loading...</p>
+          ) : (
+            <pre className="admin-stat-json">{JSON.stringify(statData, null, 2)}</pre>
+          )}
+        </section>
+      )}
 
       {/* Quick Actions */}
       <section className="admin-actions">
