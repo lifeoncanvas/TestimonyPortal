@@ -160,7 +160,15 @@ export default function AdminDashboard() {
           {statLoading ? (
             <p>Loading...</p>
           ) : (
-            <pre className="admin-stat-json">{JSON.stringify(statData, null, 2)}</pre>
+            <div className="admin-stat-info">
+              {statData && typeof statData === 'object' && !Array.isArray(statData) ? (
+                Object.entries(statData).map(([k, v]) => (
+                  <p key={k}><strong>{k}:</strong> {v?.toString()}</p>
+                ))
+              ) : (
+                <p>{statData?.message || String(statData)}</p>
+              )}
+            </div>
           )}
         </section>
       )}
