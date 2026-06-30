@@ -490,6 +490,7 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
           inviterOrNextOfKinDetails: form.inviterOrNextOfKinDetails,
           healingCentreLocation: form.healingCentreLocation,
           attendeesAtVenue: form.attendeesAtVenue ? Number(form.attendeesAtVenue) : null,
+          isGrc: form.isGrc,
         };
         
         if (editId) {
