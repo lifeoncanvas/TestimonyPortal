@@ -333,7 +333,7 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
   const [editId,     setEditId]     = useState(null);
 
   const [form, setForm] = useState({
-    title: "", categoryId: "", country: "", church: "", zone: "", description: "",
+    title: "", categoryId: "", country: "", zone: "", description: "",
     state: "", city: "", fullName: "", telephoneNumber: "", age: "", gender: "",
     conditionProblem: "", conditionDuration: "", unableToDoBefore: "",
     whatHappenedDuringProgram: "", ableToDoNow: "", inviterOrNextOfKinDetails: "",
@@ -934,7 +934,7 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
             </div>
 
             <div className="mms-field">
-              <label>Name & Contact of Person that invited you (or Next of Kin)</label>
+                <label>Name and Contact Details of the Person that invited you or Next of Kin/Guardian</label>
               <input placeholder="Details..." value={form.inviterOrNextOfKinDetails} onChange={(e) => set("inviterOrNextOfKinDetails", e.target.value)} />
             </div>
 
