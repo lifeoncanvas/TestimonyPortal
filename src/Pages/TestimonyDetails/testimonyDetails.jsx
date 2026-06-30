@@ -10,7 +10,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { useNavigate, useParams } from "react-router";
 import {
   ChevronLeft, Play, Pause, Bookmark,
-  Heart, MessageCircle, Share2, Sparkles, Flame, Send,
+  Heart, MessageCircle, Share2, Sparkles, Flame, Send, Trash2
 } from "lucide-react";
 import BottomNav from "../../Sections/BottomNav/BottomNav";
 import api from "../../services/axiosConfig";
@@ -28,6 +28,7 @@ export default function TestimonyDetail() {
 
   const [loading, setLoading] = useState(true);
   const [testimony, setTestimony] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
   
   // Audio player state
   const [playing, setPlaying] = useState(false);
@@ -59,6 +60,15 @@ export default function TestimonyDetail() {
   const toastTimer = useRef(null);
 
   useEffect(() => {
+    try {
+      const token = localStorage.getItem("token");
+      if (token) {
+        const u = JSON.parse(localStorage.getItem("user"));
+        setCurrentUser(u);
+      }
+    } catch (err) {
+      console.error(err);
+    }
     fetchTestimonyDetails();
   }, [id]);
 
@@ -262,6 +272,17 @@ export default function TestimonyDetail() {
     commentInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
+  const handleDeleteTestimony = async () => {
+    if (!window.confirm("Are you sure you want to delete this testimony?")) return;
+    try {
+      await api.delete(`/api/testimonies/${id}`);
+      showToast("Testimony deleted.");
+      setTimeout(() => navigate("/browse"), 1500);
+    } catch (err) {
+      showToast("Failed to delete testimony: " + (err.response?.data?.message || err.message));
+    }
+  };
+
   if (loading) {
     return (
       <div className="td-page" style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}>
@@ -298,9 +319,40 @@ export default function TestimonyDetail() {
         <span className="td-hero-cross" aria-hidden="true">✝</span>
         
         <div style={{ display: "flex", justifyContent: "space-between", position: "absolute", top: "20px", left: "20px", right: "20px", zIndex: 10 }}>
-          <button className="td-back" onClick={() => navigate(-1)} aria-label="Go back" style={{ position: "static" }}>
-            <ChevronLeft size={20} />
+          <button className="icon-btn-ghost" onClick={() => navigate(-1)} aria-label="Go back">
+            <ChevronLeft size={24} />
           </button>
+          
+          <div style={{ display: "flex", gap: "10px" }}>
+            {(currentUser?.role === "ADMIN" || currentUser?.id === testimony.user?.id) && (
+              <button 
+                className="icon-btn-ghost" 
+                onClick={handleDeleteTestimony} 
+                aria-label="Delete testimony"
+                style={{ background: "rgba(231, 76, 60, 0.2)", color: "#ff6b6b" }}
+              >
+                <Trash2 size={20} />
+              </button>
+            )}
+            <button className="icon-btn-ghost" onClick={() => {
+              if (navigator.share) {
+                navigator.share({
+                  title: testimony.title,
+                  url: window.location.href,
+                }).catch(console.error);
+              } else {
+                navigator.clipboard.writeText(window.location.href);
+                showToast("Link copied to clipboard!");
+              }
+            }} aria-label="Share testimony">
+              <Share2 size={20} />
+            </button>
+          </div>
+        </div>
+
+        <div className="td-hero-content">
+          <span className="td-hero-category">{testimony.category?.name}</span>
+          <h1 className="td-hero-title">{testimony.title}</h1>
           <button onClick={handleSaveToggle} aria-label="Save" style={{ background: "rgba(0,0,0,0.4)", border: "none", color: "#fff", padding: "10px", borderRadius: "50%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <Bookmark size={20} fill={saved ? "#c9a96e" : "none"} color={saved ? "#c9a96e" : "#fff"} />
           </button>

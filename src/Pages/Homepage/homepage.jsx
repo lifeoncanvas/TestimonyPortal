@@ -3,6 +3,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router";
 import BottomNav from "../../Sections/BottomNav/BottomNav";
 import api from "../../services/axiosConfig";
+import { Trash2 } from "lucide-react";
 import "./styles.css";
 
 function useIsLoggedIn() {
@@ -257,6 +258,19 @@ export default function Homepage() {
     }
   };
 
+  const handleDelete = async (e, id) => {
+    e.stopPropagation();
+    if (!window.confirm("Are you sure you want to delete this testimony?")) return;
+    try {
+      await api.delete(`/api/testimonies/${id}`);
+      setTrending(prev => prev.filter(t => t.id !== id));
+      setStories(prev => prev.filter(t => t.id !== id));
+      if (tod?.id === id) setTod(null);
+    } catch (err) {
+      alert("Failed to delete testimony: " + (err.response?.data?.message || err.message));
+    }
+  };
+
   // Helper mappers
   const mapTrendingItem = (t) => {
     const categoryLabel = t.category?.name || "Miracle";
@@ -265,6 +279,7 @@ export default function Homepage() {
       : "https://images.unsplash.com/photo-1504439468489-c8920d796a29?w=800&q=80";
     return {
       id: t.id,
+      userId: t.user?.id,
       img: firstMedia,
       categoryLabel,
       title: t.title,
@@ -282,6 +297,7 @@ export default function Homepage() {
       : "https://images.unsplash.com/photo-1516574187841-cb9cc2ca948b?w=600&q=80";
     return {
       id: t.id,
+      userId: t.user?.id,
       img: firstMedia,
       tag: categoryName,
       tagBg: style.bg,
@@ -433,6 +449,16 @@ export default function Homepage() {
                 <div className="carousel-play" aria-hidden="true">
                   <div className="carousel-play-icon" />
                 </div>
+                {(currentUser?.role === "ADMIN" || currentUser?.id === item.userId) && (
+                  <button 
+                    className="delete-card-btn"
+                    onClick={(e) => handleDelete(e, item.id)}
+                    style={{ position: "absolute", top: 10, right: 10, background: "rgba(231, 76, 60, 0.9)", color: "white", border: "none", borderRadius: "50%", padding: "8px", cursor: "pointer", zIndex: 10, display: "flex", alignItems: "center", justifyContent: "center" }}
+                    aria-label="Delete testimony"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
                 <div className="carousel-info">
                   <p className="carousel-title">{item.title}</p>
                   <p className="carousel-meta">{item.meta} · <span>👁 {item.views}</span></p>
@@ -542,6 +568,16 @@ export default function Homepage() {
                   <img src={card.img} alt={card.title} className="story-thumb-img" />
                   <div className="story-thumb-scrim" />
                   <span className="story-read-time">{card.readTime}</span>
+                  {(currentUser?.role === "ADMIN" || currentUser?.id === card.userId) && (
+                    <button 
+                      className="delete-card-btn"
+                      onClick={(e) => handleDelete(e, card.id)}
+                      style={{ position: "absolute", top: 10, right: 10, background: "rgba(231, 76, 60, 0.9)", color: "white", border: "none", borderRadius: "50%", padding: "8px", cursor: "pointer", zIndex: 10, display: "flex", alignItems: "center", justifyContent: "center" }}
+                      aria-label="Delete testimony"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
                 </div>
                 <div className="story-body">
                   <span className="story-tag"

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router";
 import "./styles.css";
 import BottomNav from "../../Sections/BottomNav/BottomNav";
-import { Search, ChevronLeft, Eye, Heart, Play, BookOpen, Clock } from "lucide-react";
+import { Search, ChevronLeft, Eye, Heart, Play, BookOpen, Clock, Trash2 } from "lucide-react";
 import api from "../../services/axiosConfig";
 
 // ─── Category gradient map ────────────────────────────────────────────────────
@@ -90,7 +90,7 @@ const RECENT_FEED = [
 // ─── Components ───────────────────────────────────────────────────────────────
 
 // Poster Card — tall portrait card with title overlaid on a gradient cover
-function PosterCard({ item, category, navigate }) {
+function PosterCard({ item, category, navigate, currentUser, handleDelete }) {
   return (
     <div
       className="poster-card"
@@ -100,10 +100,20 @@ function PosterCard({ item, category, navigate }) {
       onKeyDown={(e) => e.key === "Enter" && navigate(`/testimony/${item.id}`)}
       aria-label={item.title}
     >
-      <div className="poster-thumb" style={{ background: getCatGradient(category) }}>
+      <div className="poster-thumb" style={{ background: getCatGradient(category), position: "relative" }}>
         <div className="poster-scrim" />
         {category && (
           <span className="poster-badge">{category}</span>
+        )}
+        {(currentUser?.role === "ADMIN" || currentUser?.id === item.userId) && (
+          <button 
+            className="delete-card-btn"
+            onClick={(e) => handleDelete(e, item.id)}
+            style={{ position: "absolute", top: 10, right: 10, background: "rgba(231, 76, 60, 0.9)", color: "white", border: "none", borderRadius: "50%", padding: "8px", cursor: "pointer", zIndex: 10, display: "flex", alignItems: "center", justifyContent: "center" }}
+            aria-label="Delete testimony"
+          >
+            <Trash2 size={14} />
+          </button>
         )}
         <div className="poster-title-overlay">
           <h4>{item.title}</h4>
@@ -122,7 +132,7 @@ function PosterCard({ item, category, navigate }) {
 }
 
 // Feed Row Card — horizontal card with thumbnail, tag, title, meta
-function FeedCard({ item, navigate }) {
+function FeedCard({ item, navigate, currentUser, handleDelete }) {
   const tagStyle = getTagStyle(item.category);
   return (
     <div
@@ -132,6 +142,7 @@ function FeedCard({ item, navigate }) {
       tabIndex={0}
       onKeyDown={(e) => e.key === "Enter" && navigate(`/testimony/${item.id}`)}
       aria-label={item.title}
+      style={{ position: "relative" }}
     >
       <div className="feed-thumb" style={{ background: item.gradient }}>
         <div className="feed-thumb-scrim" />
@@ -154,6 +165,16 @@ function FeedCard({ item, navigate }) {
           </span>
         </div>
       </div>
+      {(currentUser?.role === "ADMIN" || currentUser?.id === item.userId) && (
+        <button 
+          className="delete-card-btn"
+          onClick={(e) => handleDelete(e, item.id)}
+          style={{ position: "absolute", top: 10, right: 10, background: "rgba(231, 76, 60, 0.1)", color: "#e74c3c", border: "1px solid rgba(231, 76, 60, 0.2)", borderRadius: "50%", padding: "8px", cursor: "pointer", zIndex: 10, display: "flex", alignItems: "center", justifyContent: "center" }}
+          aria-label="Delete testimony"
+        >
+          <Trash2 size={14} />
+        </button>
+      )}
     </div>
   );
 }
@@ -170,8 +191,19 @@ const Browse = () => {
   const [testimonies, setTestimonies] = useState([]);
   const [featured, setFeatured] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState(null);
 
   useEffect(() => {
+    try {
+      const token = localStorage.getItem("token");
+      if (token) {
+        const u = JSON.parse(localStorage.getItem("user"));
+        setCurrentUser(u);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+    
     // 1. Fetch categories
     api.get("/api/categories")
       .then(res => {
@@ -214,6 +246,7 @@ const Browse = () => {
       category: catName,
       items: grouped[catName].map(t => ({
         id: t.id,
+        userId: t.user?.id,
         title: t.title,
         author: t.user?.name || "Anonymous",
         location: t.country || "",
@@ -226,6 +259,7 @@ const Browse = () => {
   const recentFeed = useMemo(() => {
     return testimonies.slice(0, 10).map((t, idx) => ({
       id: t.id,
+      userId: t.user?.id,
       title: t.title,
       category: t.category?.name || "Miracle",
       location: t.country || "",
@@ -233,6 +267,18 @@ const Browse = () => {
       gradient: FEED_GRADIENTS[idx % FEED_GRADIENTS.length]
     }));
   }, [testimonies]);
+
+  const handleDelete = async (e, id) => {
+    e.stopPropagation();
+    if (!window.confirm("Are you sure you want to delete this testimony?")) return;
+    try {
+      await api.delete(`/api/testimonies/${id}`);
+      setTestimonies(prev => prev.filter(t => t.id !== id));
+      if (featured?.id === id) setFeatured(null);
+    } catch (err) {
+      alert("Failed to delete testimony: " + (err.response?.data?.message || err.message));
+    }
+  };
 
   const [activeCountry, setActiveCountry] = useState("All");
 
@@ -366,6 +412,8 @@ const Browse = () => {
                   item={item}
                   category={row.category}
                   navigate={navigate}
+                  currentUser={currentUser}
+                  handleDelete={handleDelete}
                 />
               ))}
             </div>
@@ -381,7 +429,7 @@ const Browse = () => {
           </div>
 
           {filteredFeed.map((item) => (
-            <FeedCard key={item.id} item={item} navigate={navigate} />
+            <FeedCard key={item.id} item={item} navigate={navigate} currentUser={currentUser} handleDelete={handleDelete} />
           ))}
         </section>
       )}
