@@ -11,6 +11,7 @@ import "./styles.css";
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const [dashboard, setDashboard] = useState(null);
+  const [selectedTestimony, setSelectedTestimony] = useState(null);
   const [pending, setPending] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -171,7 +172,7 @@ export default function AdminDashboard() {
                     </button>
                     <button
                       className="admin-review-btn"
-                      onClick={() => navigate("/admin/moderation")}
+                      onClick={() => setSelectedTestimony(t)}
                     >
                       Review →
                     </button>
@@ -182,6 +183,20 @@ export default function AdminDashboard() {
           </div>
         )}
       </section>
+
+      {/* Selected Testimony Details */}
+      {selectedTestimony && (
+        <section className="admin-selected-testimony">
+          <h2 className="admin-section-title"><MessageCircle size={16} /> Selected Testimony Details</h2>
+          <div className="admin-detail-card">
+            <h3>{selectedTestimony.title}</h3>
+            <p><strong>Category:</strong> {selectedTestimony.category?.name || "General"}</p>
+            <p><strong>Author:</strong> {selectedTestimony.user?.name || "Anonymous"} ({selectedTestimony.country})</p>
+            <p><strong>Description:</strong> {selectedTestimony.description}</p>
+            <p><strong>Created:</strong> {selectedTestimony.createdAt ? new Date(selectedTestimony.createdAt).toLocaleString() : ""}</p>
+          </div>
+        </section>
+      )}
     </div>
   );
 }
