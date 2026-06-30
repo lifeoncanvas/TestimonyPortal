@@ -586,8 +586,6 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
             categoryId: Number(catId),
             categoryName: catName || "Others",
             country: countryIdx !== -1 ? row[countryIdx]?.trim() : "",
-            church: churchIdx !== -1 ? row[churchIdx]?.trim() : "",
-            zone: zoneIdx !== -1 ? row[zoneIdx]?.trim() : "",
           });
         }
 
@@ -604,9 +602,9 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
   };
 
   const downloadCsvTemplate = () => {
-    const csvContent = "data:text/csv;charset=utf-8,title,description,category,country,church,zone\n"
-      + "\"Miraculous Healing from Asthma\",\"I was healed completely after praying at the Healing Streams service.\",\"Healing Streams\",\"Nigeria\",\"Christ Embassy Lagos\",\"Zone 5\"\n"
-      + "\"Business Breakthrough\",\"Received a major contract after partnering with the ministry.\",\"Partnership\",\"South Africa\",\"Christ Embassy Johannesburg\",\"SA Zone 2\"";
+    const csvContent = "data:text/csv;charset=utf-8,title,description,category,country\n"
+      + "\"Miraculous Healing from Asthma\",\"I was healed completely after praying at the Healing Streams service.\",\"Healing Streams\",\"Nigeria\"\n"
+      + "\"Business Breakthrough\",\"Received a major contract after partnering with the ministry.\",\"Partnership\",\"South Africa\"";
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
@@ -629,8 +627,6 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
           description: item.description,
           categoryId: item.categoryId,
           country: item.country,
-          church: item.church,
-          zone: item.zone,
         });
         setProgress(Math.round(((i + 1) / total) * 100));
       }
@@ -765,7 +761,7 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
               <h4 style={{ color: "var(--text)", marginBottom: "8px" }}>CSV Format Template</h4>
               <p>The CSV must have the following header columns:</p>
               <code style={{ display: "block", background: "var(--bg-card-hover)", padding: "10px", borderRadius: "8px", marginTop: "5px", color: "var(--gold)", overflowX: "auto" }}>
-                title,description,category,country,church,zone
+                title,description,category,country
               </code>
               <button
                 type="button"
@@ -851,20 +847,9 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
               </div>
             </div>
 
-            <div className="mms-row">
-              <div className="mms-field">
-                <label>City</label>
-                <input placeholder="e.g. Ikeja" value={form.city} onChange={(e) => set("city", e.target.value)} />
-              </div>
-              <div className="mms-field">
-                <label>Zone / Network</label>
-                <input placeholder="e.g. Zone 4" value={form.zone} onChange={(e) => set("zone", e.target.value)} />
-              </div>
-            </div>
-
             <div className="mms-field">
-              <label>Church / Affiliate</label>
-              <input placeholder="Christ Embassy Lagos" value={form.church} onChange={(e) => set("church", e.target.value)} />
+              <label>City</label>
+              <input placeholder="e.g. Ikeja" value={form.city} onChange={(e) => set("city", e.target.value)} />
             </div>
 
             <div className="mms-row">
