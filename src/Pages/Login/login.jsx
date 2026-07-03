@@ -39,78 +39,14 @@ export default function Login() {
     }
   };
 
-  useEffect(() => {
-    let token = null;
-    
-    // Check hash first (implicit flow)
-    if (window.location.hash && window.location.hash.includes("access_token")) {
-      const params = new URLSearchParams(window.location.hash.substring(1));
-      token = params.get("access_token");
-    } 
-    // Check search/query params (auth code flow or alternative implicit)
-    else if (window.location.search && window.location.search.includes("access_token")) {
-      const params = new URLSearchParams(window.location.search);
-      token = params.get("access_token");
-    }
-      
-      if (token) {
-        window.history.pushState(null, null, " ");
-        setKingschatLoading(true);
-        
-        fetch("https://connect.kingsch.at/developer/api/user/profile", {
-          headers: {
-            "Authorization": `Bearer ${token}`,
-            "api-key": process.env.REACT_APP_KINGSCHAT_API_KEY || "r+/XXOTHTlTtn2RbUwcclasYNw7mPBUvZgBZ1EclkwA="
-          }
-        })
-        .then(res => {
-          if (!res.ok) throw new Error("Failed to fetch KingsChat profile");
-          return res.json();
-        })
-        .then(async (kingschatUserRaw) => {
-          let userObj = kingschatUserRaw;
-          if (kingschatUserRaw.profile) userObj = kingschatUserRaw.profile;
-          else if (kingschatUserRaw.user) userObj = kingschatUserRaw.user;
-          else if (kingschatUserRaw.data) userObj = kingschatUserRaw.data;
-          
-          if (userObj && userObj.id) {
-             const name = `${userObj.first_name || ""} ${userObj.last_name || ""}`.trim() || "KingsChat User";
-             const email = userObj.email || `${userObj.id}@kingschat.com`;
-             
-             try {
-                const res = await api.post("/api/auth/kingschat", {
-                  name: name,
-                  email: email,
-                  church: "Christ Embassy Virtual Church",
-                  zone: "Virtual Zone 1",
-                  country: "Nigeria",
-                });
-          
-                localStorage.setItem("token", res.data.token);
-                localStorage.setItem("user", JSON.stringify(res.data.user));
-                navigate("/");
-             } catch (err) {
-                setError("KingsChat login failed: " + (err.response?.data?.message || err.message));
-                setKingschatLoading(false);
-             }
-          } else {
-             throw new Error("Could not extract user details from KingsChat");
-          }
-        })
-        .catch(err => {
-          console.error(err);
-          setError("KingsChat authentication error: " + err.message);
-          setKingschatLoading(false);
-        });
-      }
-  }, [navigate]);
+
 
   const handleKingschatAuth = () => {
     setError("");
     setKingschatLoading(true);
     
-    const clientId = process.env.REACT_APP_KINGSCHAT_CLIENT_ID || "5510380c-caac-4baa-ad0c-288dcdffaf1f";
-    const redirectUri = window.location.origin + "/login";
+    const clientId = process.env.REACT_APP_KINGSCHAT_CLIENT_ID || "d19351b1-4c19-4319-b823-e829dfc75cd5";
+    const redirectUri = "http://13.233.156.8";
     const scopes = encodeURIComponent('["authenticate", "profile"]');
     const authUrl = `https://accounts.kingsch.at/?client_id=${clientId}&scopes=${scopes}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token`;
     window.location.href = authUrl;
