@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import "./styles.css";
 import api from "../../services/axiosConfig";
+import kingsChatWebSdk from "kingschat-web-sdk";
+import "kingschat-web-sdk/dist/stylesheets/style.min.css";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -71,10 +73,58 @@ export default function Register() {
     setKingschatLoading(true);
     
     const clientId = process.env.REACT_APP_KINGSCHAT_CLIENT_ID || "d19351b1-4c19-4319-b823-e829dfc75cd5";
-    const redirectUri = "http://13.233.156.8";
-    const scopes = encodeURIComponent('["authenticate", "profile"]');
-    const authUrl = `https://accounts.kingsch.at/?client_id=${clientId}&scopes=${scopes}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token`;
-    window.location.href = authUrl;
+    
+    kingsChatWebSdk.login({
+      clientId: clientId,
+      scopes: ["authenticate", "profile"]
+    })
+    .then(authResponse => {
+       const token = authResponse.accessToken;
+       if (!token) throw new Error("No access token received from KingsChat");
+       
+       return fetch("https://connect.kingsch.at/developer/api/user/profile", {
+         headers: {
+           "Authorization": `Bearer ${token}`,
+           "api-key": process.env.REACT_APP_KINGSCHAT_API_KEY || "FBDOzHxVmtEAauNceYMcDQ30SoZTlj7GW3QPI8SYH4k="
+         }
+       });
+    })
+    .then(res => {
+      if (!res.ok) throw new Error("Failed to fetch KingsChat profile");
+      return res.json();
+    })
+    .then(async (kingschatUserRaw) => {
+      let userObj = kingschatUserRaw;
+      if (kingschatUserRaw.profile) userObj = kingschatUserRaw.profile;
+      else if (kingschatUserRaw.user) userObj = kingschatUserRaw.user;
+      else if (kingschatUserRaw.data) userObj = kingschatUserRaw.data;
+      
+      if (userObj && userObj.id) {
+         const name = `${userObj.first_name || ""} ${userObj.last_name || ""}`.trim() || "KingsChat User";
+         const email = userObj.email || `${userObj.id}@kingschat.com`;
+         
+         try {
+            const res = await api.post("/api/auth/kingschat", {
+              name, email,
+              church: "Christ Embassy Virtual Church",
+              zone: "Virtual Zone 1",
+              country: "Nigeria",
+            });
+      
+            localStorage.setItem("token", res.data.token);
+            localStorage.setItem("user", JSON.stringify(res.data.user));
+            navigate("/");
+         } catch (err) {
+            setError(err.response?.data?.message || "KingsChat backend login failed.");
+            setKingschatLoading(false);
+         }
+      }
+    })
+    .catch(err => {
+       console.error("KingsChat API error", err);
+       setError("KingsChat login failed: " + err.message);
+       setKingschatLoading(false);
+    });
   };
 
   return (

@@ -38,71 +38,12 @@ function ProtectedRoute({ children, requireAdmin = false }) {
   return children;
 }
 
-function KingsChatCallbackHandler() {
-  const navigate = useNavigate();
 
-  useEffect(() => {
-    let token = null;
-    if (window.location.hash && window.location.hash.includes("access_token")) {
-      const params = new URLSearchParams(window.location.hash.substring(1));
-      token = params.get("access_token");
-    } else if (window.location.search && window.location.search.includes("access_token")) {
-      const params = new URLSearchParams(window.location.search);
-      token = params.get("access_token");
-    }
-
-    if (token) {
-      window.history.pushState(null, null, " ");
-      
-      fetch("https://connect.kingsch.at/developer/api/user/profile", {
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "api-key": process.env.REACT_APP_KINGSCHAT_API_KEY || "FBDOzHxVmtEAauNceYMcDQ30SoZTlj7GW3QPI8SYH4k="
-        }
-      })
-      .then(res => {
-        if (!res.ok) throw new Error("Failed to fetch KingsChat profile");
-        return res.json();
-      })
-      .then(async (kingschatUserRaw) => {
-        let userObj = kingschatUserRaw;
-        if (kingschatUserRaw.profile) userObj = kingschatUserRaw.profile;
-        else if (kingschatUserRaw.user) userObj = kingschatUserRaw.user;
-        else if (kingschatUserRaw.data) userObj = kingschatUserRaw.data;
-        
-        if (userObj && userObj.id) {
-           const name = `${userObj.first_name || ""} ${userObj.last_name || ""}`.trim() || "KingsChat User";
-           const email = userObj.email || `${userObj.id}@kingschat.com`;
-           
-           try {
-              const res = await api.post("/api/auth/kingschat", {
-                name, email,
-                church: "Christ Embassy Virtual Church",
-                zone: "Virtual Zone 1",
-                country: "Nigeria",
-              });
-        
-              localStorage.setItem("token", res.data.token);
-              localStorage.setItem("user", JSON.stringify(res.data.user));
-              navigate("/");
-           } catch (err) {
-              console.error("KingsChat login failed", err);
-           }
-        }
-      })
-      .catch(err => {
-        console.error("KingsChat API error", err);
-      });
-    }
-  }, [navigate]);
-
-  return null;
-}
 
 function App() {
   return (
     <BrowserRouter>
-      <KingsChatCallbackHandler />
+
       <Routes>
         <Route path="/" element={<Homepage />} />
         <Route path="/browse" element={<Browse />} />
