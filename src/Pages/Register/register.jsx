@@ -19,11 +19,7 @@ export default function Register() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const [showKingschat, setShowKingschat] = useState(false);
   const [kingschatLoading, setKingschatLoading] = useState(false);
-
-  const [tempKcEmail, setTempKcEmail] = useState("");
-  const [tempKcName, setTempKcName] = useState("");
 
   const SECURITY_QUESTIONS = [
     "What is your mother's maiden name?",
@@ -73,8 +69,11 @@ export default function Register() {
   const handleKingschatAuth = async () => {
     setError("");
     setKingschatLoading(true);
-    const email = tempKcEmail || "kingschat_tester@kingschat.com";
-    const name = tempKcName || (email === "kingschat_tester@kingschat.com" ? "KingsChat Member" : email.split("@")[0].charAt(0).toUpperCase() + email.split("@")[0].slice(1));
+    
+    // Simulate redirecting to KingsChat and returning with auth data
+    // For real OAuth: window.location.href = `https://accounts.kingsch.at/OAuth2/Authorize?client_id=YOUR_CLIENT_ID&redirect_uri=YOUR_CALLBACK_URL&response_type=code`;
+    const email = "kingschat_tester@kingschat.com";
+    const name = "KingsChat Member";
 
     try {
       const res = await api.post("/api/auth/kingschat", {
@@ -87,7 +86,6 @@ export default function Register() {
 
       localStorage.setItem("token", res.data.token);
       localStorage.setItem("user", JSON.stringify(res.data.user));
-      setShowKingschat(false);
       navigate("/");
     } catch (err) {
       setError("KingsChat registration failed: " + (err.response?.data?.message || err.message));
@@ -95,11 +93,6 @@ export default function Register() {
       setKingschatLoading(false);
     }
   };
-
-  const kcEmail = tempKcEmail || "kingschat_tester@kingschat.com";
-  const kcName = tempKcName || (kcEmail === "kingschat_tester@kingschat.com"
-    ? "KingsChat Member"
-    : kcEmail.split("@")[0].charAt(0).toUpperCase() + kcEmail.split("@")[0].slice(1));
 
   return (
     <div className="register-page">
@@ -239,10 +232,10 @@ export default function Register() {
         <button
           type="button"
           className="kingschat-btn"
-          onClick={() => setShowKingschat(true)}
-          disabled={loading}
+          onClick={handleKingschatAuth}
+          disabled={kingschatLoading || loading}
         >
-          <span className="kc-logo">💬</span> Register with KingsChat
+          <span className="kc-logo">💬</span> {kingschatLoading ? "Redirecting to KingsChat..." : "Register with KingsChat"}
         </button>
 
         <p className="auth-switch">
@@ -251,64 +244,6 @@ export default function Register() {
         </p>
       </div>
 
-      {/* KingsChat Modal */}
-      {showKingschat && (
-        <div className="kc-modal-overlay">
-          <div className="kc-modal">
-            <div className="kc-header">
-              <span className="kc-icon">💬</span>
-              <h2>KingsChat Secure Registration</h2>
-            </div>
-            <div className="kc-body">
-              <p>
-                <strong>My Miracle Story</strong> is requesting permission to access your KingsChat profile details:
-              </p>
-              <div className="kc-field">
-                <label>Enter KingsChat Email</label>
-                <input
-                  type="email"
-                  placeholder="e.g. sharon@kingschat.com"
-                  value={tempKcEmail}
-                  onChange={(e) => setTempKcEmail(e.target.value)}
-                />
-              </div>
-              <div className="kc-field">
-                <label>Enter KingsChat Full Name</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Sharon Shelke"
-                  value={tempKcName}
-                  onChange={(e) => setTempKcName(e.target.value)}
-                />
-              </div>
-              <ul className="kc-permissions">
-                <li>✓ Full Name ({kcName})</li>
-                <li>✓ Email address ({kcEmail})</li>
-                <li>✓ Church & Zone details</li>
-              </ul>
-              <p className="kc-disclaimer">
-                By clicking Authorize, you agree to share this information to set up your account.
-              </p>
-            </div>
-            <div className="kc-actions">
-              <button
-                className="kc-btn-cancel"
-                onClick={() => setShowKingschat(false)}
-                disabled={kingschatLoading}
-              >
-                Cancel
-              </button>
-              <button
-                className="kc-btn-confirm"
-                onClick={handleKingschatAuth}
-                disabled={kingschatLoading}
-              >
-                {kingschatLoading ? "Authorizing..." : "Authorize & Register"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
