@@ -74,11 +74,15 @@ export default function Register() {
     
     const clientId = process.env.REACT_APP_KINGSCHAT_CLIENT_ID || "d19351b1-4c19-4319-b823-e829dfc75cd5";
     
+    console.log("[KingsChat] Starting login with clientId:", clientId);
+    console.log("[KingsChat] redirect_uri (origin):", window.location.origin);
+    
     kingsChatWebSdk.login({
       clientId: clientId,
       scopes: ["authenticate", "profile"]
     })
     .then(authResponse => {
+       console.log("[KingsChat] Auth response received:", Object.keys(authResponse));
        const token = authResponse.accessToken;
        if (!token) throw new Error("No access token received from KingsChat");
        
@@ -121,8 +125,21 @@ export default function Register() {
       }
     })
     .catch(err => {
-       console.error("KingsChat API error", err);
-       setError("KingsChat login failed: " + err.message);
+       console.error("[KingsChat] Login error:", err);
+       console.error("[KingsChat] Current origin:", window.location.origin);
+       
+       let userMessage;
+       if (err.message?.includes("User closed window")) {
+         userMessage = "KingsChat login was cancelled. Please allow access in the popup window to sign in.";
+       } else if (err.message?.includes("enable popups")) {
+         userMessage = "Please allow popups for this site and try again.";
+       } else if (err.message?.includes("Not allowed message origin")) {
+         userMessage = "Authentication error. Please contact support.";
+       } else {
+         userMessage = "KingsChat login failed. Please try again.";
+       }
+       
+       setError(userMessage);
        setKingschatLoading(false);
     });
   };
