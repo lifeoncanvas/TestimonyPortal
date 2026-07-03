@@ -47,7 +47,7 @@ export default function Login() {
     
     const clientId = process.env.REACT_APP_KINGSCHAT_CLIENT_ID || "d19351b1-4c19-4319-b823-e829dfc75cd5";
     const redirectUri = "http://13.233.156.8";
-    const scopes = '%5B"authenticate",%20"profile"%5D';
+    const scopes = encodeURIComponent('["authenticate", "profile"]');
     const authUrl = `https://accounts.kingsch.at/?client_id=${clientId}&scopes=${scopes}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token`;
     window.location.href = authUrl;
   };
