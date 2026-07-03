@@ -67,10 +67,18 @@ export default function Register() {
   };
 
   useEffect(() => {
-    const hash = window.location.hash;
-    if (hash && hash.includes("access_token")) {
-      const params = new URLSearchParams(hash.substring(1));
-      const token = params.get("access_token");
+    let token = null;
+    
+    // Check hash first (implicit flow)
+    if (window.location.hash && window.location.hash.includes("access_token")) {
+      const params = new URLSearchParams(window.location.hash.substring(1));
+      token = params.get("access_token");
+    } 
+    // Check search/query params (auth code flow or alternative implicit)
+    else if (window.location.search && window.location.search.includes("access_token")) {
+      const params = new URLSearchParams(window.location.search);
+      token = params.get("access_token");
+    }
       
       if (token) {
         window.history.pushState(null, null, " ");
@@ -132,7 +140,7 @@ export default function Register() {
     const clientId = process.env.REACT_APP_KINGSCHAT_CLIENT_ID || "5510380c-caac-4baa-ad0c-288dcdffaf1f";
     const redirectUri = window.location.origin + "/register";
     const scopes = encodeURIComponent('["authenticate", "profile"]');
-    const authUrl = `https://accounts.kingsch.at/?client_id=${clientId}&scopes=${scopes}&redirect_uri=${encodeURIComponent(redirectUri)}`;
+    const authUrl = `https://accounts.kingsch.at/?client_id=${clientId}&scopes=${scopes}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token`;
     window.location.href = authUrl;
   };
 
