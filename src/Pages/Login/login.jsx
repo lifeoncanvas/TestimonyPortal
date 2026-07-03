@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import "./styles.css";
 import api from "../../services/axiosConfig";
@@ -39,32 +39,75 @@ export default function Login() {
     }
   };
 
-  const handleKingschatAuth = async () => {
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash && hash.includes("access_token")) {
+      const params = new URLSearchParams(hash.substring(1));
+      const token = params.get("access_token");
+      
+      if (token) {
+        window.history.pushState(null, null, " ");
+        setKingschatLoading(true);
+        
+        fetch("https://connect.kingsch.at/developer/api/user/profile", {
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "api-key": process.env.REACT_APP_KINGSCHAT_API_KEY || "r+/XXOTHTlTtn2RbUwcclasYNw7mPBUvZgBZ1EclkwA="
+          }
+        })
+        .then(res => {
+          if (!res.ok) throw new Error("Failed to fetch KingsChat profile");
+          return res.json();
+        })
+        .then(async (kingschatUserRaw) => {
+          let userObj = kingschatUserRaw;
+          if (kingschatUserRaw.profile) userObj = kingschatUserRaw.profile;
+          else if (kingschatUserRaw.user) userObj = kingschatUserRaw.user;
+          else if (kingschatUserRaw.data) userObj = kingschatUserRaw.data;
+          
+          if (userObj && userObj.id) {
+             const name = `${userObj.first_name || ""} ${userObj.last_name || ""}`.trim() || "KingsChat User";
+             const email = userObj.email || `${userObj.id}@kingschat.com`;
+             
+             try {
+                const res = await api.post("/api/auth/kingschat", {
+                  name: name,
+                  email: email,
+                  church: "Christ Embassy Virtual Church",
+                  zone: "Virtual Zone 1",
+                  country: "Nigeria",
+                });
+          
+                localStorage.setItem("token", res.data.token);
+                localStorage.setItem("user", JSON.stringify(res.data.user));
+                navigate("/");
+             } catch (err) {
+                setError("KingsChat login failed: " + (err.response?.data?.message || err.message));
+                setKingschatLoading(false);
+             }
+          } else {
+             throw new Error("Could not extract user details from KingsChat");
+          }
+        })
+        .catch(err => {
+          console.error(err);
+          setError("KingsChat authentication error: " + err.message);
+          setKingschatLoading(false);
+        });
+      }
+    }
+  }, [navigate]);
+
+  const handleKingschatAuth = () => {
     setError("");
     setKingschatLoading(true);
     
-    // Simulate redirecting to KingsChat and returning with auth data
-    // For real OAuth: window.location.href = `https://accounts.kingsch.at/OAuth2/Authorize?client_id=YOUR_CLIENT_ID&redirect_uri=YOUR_CALLBACK_URL&response_type=code`;
-    const email = "kingschat_tester@kingschat.com";
-    const name = "KingsChat Member";
-
-    try {
-      const res = await api.post("/api/auth/kingschat", {
-        name: name,
-        email: email,
-        church: "Christ Embassy Virtual Church",
-        zone: "Virtual Zone 1",
-        country: "Nigeria",
-      });
-
-      localStorage.setItem("token", res.data.token);
-      localStorage.setItem("user", JSON.stringify(res.data.user));
-      navigate("/");
-    } catch (err) {
-      setError("KingsChat login failed: " + (err.response?.data?.message || err.message));
-    } finally {
-      setKingschatLoading(false);
-    }
+    const clientId = process.env.REACT_APP_KINGSCHAT_CLIENT_ID || "562a4b62-bbac-43b6-939b-4ba4603ad303";
+    const redirectUri = window.location.origin + "/login";
+    const scope = "user_info";
+    const responseType = "token";
+    const authUrl = `https://accounts.kingsch.at/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scope}&response_type=${responseType}`;
+    window.location.href = authUrl;
   };
   const [loginMethod, setLoginMethod] = useState(null); // null, 'email', 'phone'
 
