@@ -130,7 +130,6 @@ export default function Register() {
           setKingschatLoading(false);
         });
       }
-    }
   }, [navigate, form.church, form.zone, form.country]);
 
   const handleKingschatAuth = () => {

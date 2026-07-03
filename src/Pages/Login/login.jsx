@@ -103,7 +103,6 @@ export default function Login() {
           setKingschatLoading(false);
         });
       }
-    }
   }, [navigate]);
 
   const handleKingschatAuth = () => {
