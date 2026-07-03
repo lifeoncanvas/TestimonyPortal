@@ -129,11 +129,10 @@ export default function Register() {
     setError("");
     setKingschatLoading(true);
     
-    const clientId = process.env.REACT_APP_KINGSCHAT_CLIENT_ID || "562a4b62-bbac-43b6-939b-4ba4603ad303";
+    const clientId = process.env.REACT_APP_KINGSCHAT_CLIENT_ID || "5510380c-caac-4baa-ad0c-288dcdffaf1f";
     const redirectUri = window.location.origin + "/register";
-    const scope = "user_info";
-    const responseType = "token";
-    const authUrl = `https://accounts.kingsch.at/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scope}&response_type=${responseType}`;
+    const scopes = encodeURIComponent('["authenticate", "profile"]');
+    const authUrl = `https://accounts.kingsch.at/?client_id=${clientId}&scopes=${scopes}&redirect_uri=${encodeURIComponent(redirectUri)}`;
     window.location.href = authUrl;
   };
 
