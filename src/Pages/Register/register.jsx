@@ -245,10 +245,10 @@ export default function Register() {
               style={{
                 width: '100%',
                 padding: '12px',
-                border: '1px solid var(--border-color)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
                 borderRadius: '8px',
-                backgroundColor: 'var(--surface-color)',
-                color: 'var(--text-color)',
+                backgroundColor: '#161821',
+                color: '#ffffff',
                 marginBottom: '10px'
               }}
             >
