@@ -1,7 +1,9 @@
 import axios from "axios";
 
+const apiBaseUrl = (process.env.REACT_APP_API_URL || "http://148.66.154.48:8083").replace(/\/$/, "");
+
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || window.location.origin,
+  baseURL: apiBaseUrl,
   headers: {
     "Content-Type": "application/json",
   },
