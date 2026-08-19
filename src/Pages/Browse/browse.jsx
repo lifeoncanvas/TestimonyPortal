@@ -100,7 +100,14 @@ function PosterCard({ item, category, navigate, currentUser, handleDelete }) {
       onKeyDown={(e) => e.key === "Enter" && navigate(`/testimony/${item.id}`)}
       aria-label={item.title}
     >
-      <div className="poster-thumb" style={{ background: getCatGradient(category), position: "relative" }}>
+      <div className="poster-thumb" style={{ background: getCatGradient(category), position: "relative", overflow: "hidden" }}>
+        {item.img && (
+          <img
+            src={item.img}
+            alt={item.title}
+            style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" }}
+          />
+        )}
         <div className="poster-scrim" />
         {category && (
           <span className="poster-badge">{category}</span>
@@ -246,15 +253,26 @@ const Browse = () => {
     return Object.keys(grouped).map(catName => ({
       title: `${catName} Testimonies`,
       category: catName,
-      items: grouped[catName].map(t => ({
-        id: t.id,
-        userId: t.user?.id,
-        title: t.title,
-        author: t.user?.name || "Anonymous",
-        location: t.country || "",
-        views: t.viewCount || 0,
-        likes: t.likeCount || 0
-      }))
+      items: grouped[catName].map(t => {
+        const list = t.media || t.testimonyMedia || t.mediaList || t.attachments || [];
+        const mediaObj = list.find(m => m.mediaType === "IMAGE") || list.find(m => m.mediaType === "VIDEO") || list[0];
+        let img = null;
+        const rawUrl = mediaObj?.fileUrl || mediaObj?.url || mediaObj?.path || mediaObj?.filePath || mediaObj?.mediaUrl;
+        if (rawUrl) {
+          const base = (api.defaults.baseURL || "").replace(/\/$/, "");
+          img = rawUrl.startsWith("http") ? rawUrl : (rawUrl.startsWith("/") ? `${base}${rawUrl}` : `${base}/${rawUrl}`);
+        }
+        return {
+          id: t.id,
+          userId: t.user?.id,
+          title: t.title,
+          img,
+          author: t.user?.name || "Anonymous",
+          location: t.country || "",
+          views: t.viewCount || 0,
+          likes: t.likeCount || 0
+        };
+      })
     }));
   }, [testimonies]);
 

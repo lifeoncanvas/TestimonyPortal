@@ -273,16 +273,31 @@ export default function Homepage() {
     }
   };
 
+  const getTestimonyMediaUrl = (t, defaultFallback) => {
+    const list = t?.media || t?.testimonyMedia || t?.mediaList || t?.attachments || [];
+    if (list && list.length > 0) {
+      const mediaObj = list.find(m => m.mediaType === "IMAGE") || list.find(m => m.mediaType === "VIDEO") || list[0];
+      const rawUrl = mediaObj?.fileUrl || mediaObj?.url || mediaObj?.path || mediaObj?.filePath || mediaObj?.mediaUrl;
+      if (rawUrl) {
+        if (rawUrl.startsWith("http://") || rawUrl.startsWith("https://")) {
+          return rawUrl;
+        }
+        const baseUrl = (api.defaults.baseURL || "").replace(/\/$/, "");
+        return rawUrl.startsWith("/") ? `${baseUrl}${rawUrl}` : `${baseUrl}/${rawUrl}`;
+      }
+    }
+    return defaultFallback;
+  };
+
   // Helper mappers
   const mapTrendingItem = (t) => {
     const categoryLabel = t.category?.name || "Miracle";
-    const firstMedia = t.media && t.media.length > 0
-      ? api.defaults.baseURL + t.media[0].fileUrl
-      : "https://images.unsplash.com/photo-1504439468489-c8920d796a29?w=800&q=80";
+    const fallback = "https://images.unsplash.com/photo-1504439468489-c8920d796a29?w=800&q=80";
+    const imgUrl = getTestimonyMediaUrl(t, fallback);
     return {
       id: t.id,
       userId: t.user?.id,
-      img: firstMedia,
+      img: imgUrl,
       categoryLabel,
       title: t.title,
       meta: `${t.user?.name || "Anonymous"} · ${t.country || ""}`,
@@ -294,13 +309,23 @@ export default function Homepage() {
   const mapStoryItem = (t, index) => {
     const categoryName = t.category?.name || "Healing Streams";
     const style = getTagStyle(categoryName);
-    const firstMedia = t.media && t.media.length > 0
-      ? api.defaults.baseURL + t.media[0].fileUrl
-      : "https://images.unsplash.com/photo-1516574187841-cb9cc2ca948b?w=600&q=80";
+    const fallbackMap = {
+      "Healing Streams": "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=800&q=80",
+      "Partnership": "https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=800&q=80",
+      "Prayer Clouds": "https://images.unsplash.com/photo-1438232992991-995b7058bbb3?w=800&q=80",
+      "Crusades": "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800&q=80",
+      "Healing to the Nations": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&q=80",
+      "Magazines": "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=800&q=80",
+      "Pray with Me": "https://images.unsplash.com/photo-1544027993-37dbfe43562a?w=800&q=80",
+      "Heralds": "https://images.unsplash.com/photo-1507676184212-d03ab07a01bf?w=800&q=80",
+    };
+    const fallback = fallbackMap[categoryName] || "https://images.unsplash.com/photo-1516574187841-cb9cc2ca948b?w=600&q=80";
+    const imgUrl = getTestimonyMediaUrl(t, fallback);
+
     return {
       id: t.id,
       userId: t.user?.id,
-      img: firstMedia,
+      img: imgUrl,
       tag: categoryName,
       tagBg: style.bg,
       tagColor: style.color,
@@ -315,8 +340,16 @@ export default function Homepage() {
     };
   };
 
-  const mappedTrending = trending.map(mapTrendingItem);
-  const mappedStories = stories.map(mapStoryItem);
+  const mappedTrending = trending.length > 0
+    ? trending.map(mapTrendingItem)
+    : TRENDING.map(t => ({
+        ...t,
+        categoryLabel: t.categoryLabel || "Miracle",
+      }));
+
+  const mappedStories = stories.length > 0
+    ? stories.map(mapStoryItem)
+    : ALL_STORIES.filter(s => activeCategory === "all" || s.categoryKey === activeCategory);
 
   function goToTestimony(id) { navigate(`/testimony/${id}`); }
 
