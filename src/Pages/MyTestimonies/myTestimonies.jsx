@@ -140,7 +140,7 @@ function TestimonyCard({ testimony, onDelete, onShare }) {
 
             <span className={`mt-status ${testimony.status}`}>
               {testimony.status === "approved" && <><CheckCircle size={11} /> Published</>}
-              {testimony.status === "pending"  && <><Clock size={11} /> Pending</>}
+              {testimony.status === "pending"  && <><Clock size={11} /> Pending Admin Review</>}
               {testimony.status === "rejected" && <><XCircle size={11} /> Rejected</>}
             </span>
           </div>
@@ -167,7 +167,7 @@ function TestimonyCard({ testimony, onDelete, onShare }) {
           )}
 
           {testimony.status === "pending" && (
-            <span className="mt-pending-note">Usually reviewed within 24h</span>
+            <span className="mt-pending-note">Awaiting Admin Approval</span>
           )}
         </div>
       </div>

@@ -1,6 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router";
-import { useEffect } from "react";
-import api from "./services/axiosConfig";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router";
 import './App.css';
 
 import Homepage from "./Pages/Homepage/homepage";

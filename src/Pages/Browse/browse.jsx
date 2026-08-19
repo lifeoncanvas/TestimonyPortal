@@ -222,9 +222,11 @@ const Browse = () => {
       .catch(err => console.error("Error loading featured:", err));
 
     // 3. Fetch all testimonies to group and filter
-    api.get("/api/testimonies", { params: { size: 50 } })
+    api.get("/api/testimonies", { params: { size: 50, status: "APPROVED" } })
       .then(res => {
-        setTestimonies(res.data.content || []);
+        const rawList = res.data.content || (Array.isArray(res.data) ? res.data : []);
+        const approvedOnly = rawList.filter(t => !t.status || t.status === "APPROVED");
+        setTestimonies(approvedOnly);
       })
       .catch(err => console.error("Error loading browse testimonies:", err))
       .finally(() => setLoading(false));
@@ -318,13 +320,33 @@ const Browse = () => {
           <ChevronLeft size={20} />
         </button>
         <h1>Browse Testimonies</h1>
-        <button
-          className="browse-search-icon"
-          aria-label="Focus search"
-          onClick={() => document.querySelector(".browse-search input")?.focus()}
-        >
-          <Search size={18} />
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <button
+            onClick={() => navigate("/upload")}
+            style={{
+              background: "linear-gradient(135deg, #d97706, #b45309)",
+              color: "#fff",
+              border: "none",
+              borderRadius: "20px",
+              padding: "6px 12px",
+              fontWeight: "600",
+              fontSize: "12px",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "4px"
+            }}
+          >
+            ✦ Add Testimony
+          </button>
+          <button
+            className="browse-search-icon"
+            aria-label="Focus search"
+            onClick={() => document.querySelector(".browse-search input")?.focus()}
+          >
+            <Search size={18} />
+          </button>
+        </div>
       </header>
 
       {/* ── SEARCH + FILTERS ── */}

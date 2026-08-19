@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import { useNavigate } from "react-router";
 import "./styles.css";
 import api from "../../services/axiosConfig";
 
@@ -321,6 +322,7 @@ function parseCSV(text) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function UploadStepper({ onSuccess, onSubmit }) {
+  const navigate = useNavigate();
   const [step,       setStep]       = useState(0);
   const [format,     setFormat]     = useState(null);
   const [categories, setCategories] = useState([]);
@@ -428,21 +430,6 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
     };
   }, [step, format?.id]);
 
-  const hasRequiredMedia =
-    format?.id === "record-video"
-      ? (videoRec.recState === "done" && videoRec.blobFile)
-      : format?.id === "record-audio"
-      ? (audioRec.recState === "done" && audioRec.blobFile)
-      : format?.id === "upload"
-      ? (uploadedFiles.length > 0)
-      : true;
-
-  const canContinueStory =
-    form.title.trim() &&
-    form.categoryId &&
-    (isText ? form.description.trim().length > 20 : true) &&
-    hasRequiredMedia;
-
   const addFiles = (sel) =>
     setUploadedFiles((p) => [
       ...p,
@@ -450,42 +437,82 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
     ]);
   const removeFile = (i) => setUploadedFiles((p) => p.filter((_, idx) => idx !== i));
 
+  const validateStoryForm = () => {
+    if (!form.title.trim()) {
+      setError("Please enter a Testimony Title.");
+      return false;
+    }
+    if (!form.categoryId) {
+      setError("Please select a Category from the dropdown.");
+      return false;
+    }
+    if (format?.id === "record-video" && (!videoRec.blobFile || videoRec.recState !== "done")) {
+      setError("Please record your video testimony before continuing.");
+      return false;
+    }
+    if (format?.id === "record-audio" && (!audioRec.blobFile || audioRec.recState !== "done")) {
+      setError("Please record your audio testimony before continuing.");
+      return false;
+    }
+    if (format?.id === "upload" && uploadedFiles.length === 0) {
+      setError("Please upload your testimony video file before continuing.");
+      return false;
+    }
+    const hasText = form.description.trim() || form.whatHappenedDuringProgram.trim() || form.conditionProblem.trim();
+    if (isText && !hasText) {
+      setError("Please write your testimony details in the form.");
+      return false;
+    }
+    return true;
+  };
+
   // ── Submit testimony text → get ID
   const handleSubmitStory = async () => {
     setError(null);
+    if (!validateStoryForm()) return;
     setSubmitting(true);
     try {
       let id = testimonyId;
-      const finalDescription = form.description.trim() || `[${format?.label || "Media"} Testimony]`;
-        const reqBody = {
-          title:       form.title,
-          description: finalDescription,
-          categoryId:  Number(form.categoryId),
-          country:     form.country,
-          state:       form.state,
-          city:        form.city,
-          fullName:    form.fullName,
-          telephoneNumber: form.telephoneNumber,
-          age:         form.age ? Number(form.age) : null,
-          gender:      form.gender,
-          conditionProblem: form.conditionProblem,
-          conditionDuration: form.conditionDuration,
-          unableToDoBefore: form.unableToDoBefore,
-          whatHappenedDuringProgram: form.whatHappenedDuringProgram,
-          ableToDoNow: form.ableToDoNow,
-          inviterOrNextOfKinDetails: form.inviterOrNextOfKinDetails,
-          healingCentreLocation: form.healingCentreLocation,
-          attendeesAtVenue: form.attendeesAtVenue ? Number(form.attendeesAtVenue) : null,
-          isGrc: form.isGrc,
-        };
-        
-        if (editId) {
-          await api.put(`${API.submit}/${editId}`, reqBody);
-          id = editId;
+      let finalDescription = form.description.trim();
+      if (!finalDescription) {
+        if (form.whatHappenedDuringProgram.trim()) {
+          finalDescription = form.whatHappenedDuringProgram.trim();
+        } else if (form.conditionProblem.trim()) {
+          finalDescription = form.conditionProblem.trim();
         } else {
-          const res = await api.post(API.submit, reqBody);
-          id = res.data.id;
+          finalDescription = `[${format?.label || "Media"} Testimony]`;
         }
+      }
+
+      const reqBody = {
+        title:       form.title,
+        description: finalDescription,
+        categoryId:  Number(form.categoryId),
+        country:     form.country,
+        state:       form.state,
+        city:        form.city,
+        fullName:    form.fullName,
+        telephoneNumber: form.telephoneNumber,
+        age:         form.age ? Number(form.age) : null,
+        gender:      form.gender,
+        conditionProblem: form.conditionProblem,
+        conditionDuration: form.conditionDuration,
+        unableToDoBefore: form.unableToDoBefore,
+        whatHappenedDuringProgram: form.whatHappenedDuringProgram,
+        ableToDoNow: form.ableToDoNow,
+        inviterOrNextOfKinDetails: form.inviterOrNextOfKinDetails,
+        healingCentreLocation: form.healingCentreLocation,
+        attendeesAtVenue: form.attendeesAtVenue ? Number(form.attendeesAtVenue) : null,
+        isGrc: form.isGrc,
+      };
+      
+      if (editId) {
+        await api.put(`${API.submit}/${editId}`, reqBody);
+        id = editId;
+      } else {
+        const res = await api.post(API.submit, reqBody);
+        id = res.data.id;
+      }
 
       setTestimonyId(id);
       setStep(PREVIEW);
@@ -815,7 +842,7 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
             {error && <div className="mms-error">{error}</div>}
 
             <div className="mms-field">
-              <label>Testimony Title</label>
+              <label>Testimony Title <span style={{ color: "#d97706" }}>*</span></label>
               <input
                 placeholder="e.g. God restored my health in three days"
                 value={form.title}
@@ -824,7 +851,7 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
             </div>
 
             <div className="mms-field">
-              <label>Category</label>
+              <label>Category <span style={{ color: "#d97706" }}>*</span></label>
               <select
                 value={form.categoryId}
                 onChange={(e) => set("categoryId", e.target.value)}
@@ -1185,17 +1212,52 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
         <div className="mms-card">
           <div className="mms-success">
             <div className="mms-success-halo">🙏</div>
-            <h2>{isBulk ? "Import Completed!" : "Testimony Received"}</h2>
+            <h2>{isBulk ? "Import Completed!" : "Testimony Submitted for Admin Approval"}</h2>
             <p>
               {isBulk
-                ? `Successfully imported ${parsedStories.length} testimonies into the portal for review.`
-                : "Your story is under review and will be published shortly. Thank you for sharing what God has done."}
+                ? `Successfully imported ${parsedStories.length} testimonies into the portal for admin approval.`
+                : "Your testimony has been successfully submitted and sent to the Admin for approval. Once approved, it will be published and visible on the website."}
             </p>
             {!isBulk && testimonyId && (
-              <div className="mms-success-ref">
-                Reference ID: <strong>#{testimonyId}</strong>
+              <div className="mms-success-ref" style={{ margin: "16px 0", padding: "10px", background: "rgba(217, 119, 6, 0.1)", borderRadius: "8px", border: "1px solid rgba(217, 119, 6, 0.3)" }}>
+                Status: <strong style={{ color: "#d97706" }}>PENDING ADMIN APPROVAL</strong> | Reference ID: <strong>#{testimonyId}</strong>
               </div>
             )}
+            <div style={{ display: "flex", gap: "12px", justifyContent: "center", marginTop: "24px", flexWrap: "wrap" }}>
+              <button
+                className="mms-btn-primary"
+                onClick={() => navigate("/my-testimonies")}
+                style={{ padding: "10px 20px", fontSize: "14px" }}
+              >
+                View My Testimonies
+              </button>
+              <button
+                className="mms-btn-secondary"
+                onClick={() => {
+                  setStep(0);
+                  setFormat(null);
+                  setTestimonyId(null);
+                  setForm({
+                    title: "", categoryId: "", country: "", description: "",
+                    state: "", city: "", fullName: "", telephoneNumber: "", age: "", gender: "",
+                    conditionProblem: "", conditionDuration: "", unableToDoBefore: "",
+                    whatHappenedDuringProgram: "", ableToDoNow: "", inviterOrNextOfKinDetails: "",
+                    healingCentreLocation: "", attendeesAtVenue: "", isGrc: false,
+                  });
+                  setUploadedFiles([]);
+                }}
+                style={{ padding: "10px 20px", fontSize: "14px" }}
+              >
+                Submit Another Testimony
+              </button>
+              <button
+                className="mms-btn-secondary"
+                onClick={() => navigate("/")}
+                style={{ padding: "10px 20px", fontSize: "14px" }}
+              >
+                Return to Home
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1239,7 +1301,7 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
               <button
                 className="mms-btn-primary"
                 onClick={handleSubmitStory}
-                disabled={!canContinueStory || submitting}
+                disabled={submitting}
               >
                 {submitting
                   ? <><span className="mms-spinner" /> Saving…</>

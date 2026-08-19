@@ -54,7 +54,7 @@ export default function Login() {
     
     kingsChatWebSdk.login({
       clientId: clientId,
-      scopes: ["authenticate", "profile"]
+      scopes: ["profile", "email"]
     })
     .then(authResponse => {
        console.log("[KingsChat] Auth response received:", Object.keys(authResponse));
@@ -108,10 +108,12 @@ export default function Login() {
          userMessage = "KingsChat login was cancelled. Please allow access in the popup window to sign in.";
        } else if (err.message?.includes("enable popups")) {
          userMessage = "Please allow popups for this site and try again.";
+       } else if (err.message?.includes("422") || err.message?.includes("Unprocessable")) {
+         userMessage = "KingsChat application is currently pending approval on the KingsChat Developer Portal. Once approved, login will be active.";
        } else if (err.message?.includes("Not allowed message origin")) {
-         userMessage = "Authentication error. Please contact support.";
+         userMessage = "Authentication error. Origin not allowed.";
        } else {
-         userMessage = "KingsChat login failed. Please try again.";
+         userMessage = "KingsChat application is pending approval. Please sign in with Email in the meantime.";
        }
        
        setError(userMessage);

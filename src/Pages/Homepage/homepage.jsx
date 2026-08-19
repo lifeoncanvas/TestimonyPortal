@@ -248,9 +248,11 @@ export default function Homepage() {
     try {
       setLoading(true);
       const categoryId = KEY_TO_ID[activeCategory];
-      const params = categoryId ? { categoryId } : {};
+      const params = categoryId ? { categoryId, status: "APPROVED" } : { status: "APPROVED" };
       const res = await api.get("/api/testimonies", { params });
-      setStories(res.data.content || []);
+      const rawList = res.data.content || (Array.isArray(res.data) ? res.data : []);
+      const approvedStories = rawList.filter(t => !t.status || t.status === "APPROVED");
+      setStories(approvedStories);
     } catch (err) {
       console.error("Error fetching recent stories:", err);
     } finally {
@@ -325,6 +327,27 @@ export default function Homepage() {
       <header className="header">
         <div className="logo">My Miracle<span>Story</span></div>
         <div className="header-actions">
+          <button
+            className="header-add-btn"
+            onClick={() => navigate("/upload")}
+            style={{
+              background: "linear-gradient(135deg, #d97706, #b45309)",
+              color: "#fff",
+              border: "none",
+              borderRadius: "20px",
+              padding: "7px 14px",
+              fontWeight: "600",
+              fontSize: "13px",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "5px",
+              marginRight: "10px",
+              boxShadow: "0 2px 8px rgba(217, 119, 6, 0.3)"
+            }}
+          >
+            ✦ Add Testimony
+          </button>
           {isLoggedIn ? (
             <>
               {currentUser?.role === "ADMIN" && (
