@@ -193,6 +193,17 @@ export default function AdminDashboard() {
             </div>
             <ArrowRight size={16} className="admin-action-arrow" />
           </button>
+
+          <button className="admin-action-card" onClick={() => navigate("/admin/users")}>
+            <div className="admin-action-icon" style={{ background: "linear-gradient(135deg, #667eea, #764ba2)" }}>
+              <Users size={20} />
+            </div>
+            <div>
+              <h3>Manage Admins & Roles</h3>
+              <p>{dashboard?.totalUsers || 0} users registered • Grant/Revoke Admin</p>
+            </div>
+            <ArrowRight size={16} className="admin-action-arrow" />
+          </button>
         </div>
       </section>
 

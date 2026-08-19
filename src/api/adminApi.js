@@ -16,3 +16,11 @@ export const rejectTestimony = (id) =>
 // GET /api/admin/dashboard
 export const getAdminDashboard = () =>
   api.get("/api/admin/dashboard");
+
+// GET /api/admin/users
+export const getAllUsers = () =>
+  api.get("/api/admin/users");
+
+// PUT /api/admin/users/{id}/role
+export const updateUserRole = (id, role) =>
+  api.put(`/api/admin/users/${id}/role`, { role });

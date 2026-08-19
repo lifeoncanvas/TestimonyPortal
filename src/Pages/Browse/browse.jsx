@@ -225,7 +225,7 @@ const Browse = () => {
     api.get("/api/testimonies", { params: { size: 50, status: "APPROVED" } })
       .then(res => {
         const rawList = res.data.content || (Array.isArray(res.data) ? res.data : []);
-        const approvedOnly = rawList.filter(t => !t.status || t.status === "APPROVED");
+        const approvedOnly = rawList.filter(t => (!t.status || t.status === "APPROVED") && !t.isGrc);
         setTestimonies(approvedOnly);
       })
       .catch(err => console.error("Error loading browse testimonies:", err))

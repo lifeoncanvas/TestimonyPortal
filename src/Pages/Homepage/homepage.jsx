@@ -251,7 +251,7 @@ export default function Homepage() {
       const params = categoryId ? { categoryId, status: "APPROVED" } : { status: "APPROVED" };
       const res = await api.get("/api/testimonies", { params });
       const rawList = res.data.content || (Array.isArray(res.data) ? res.data : []);
-      const approvedStories = rawList.filter(t => !t.status || t.status === "APPROVED");
+      const approvedStories = rawList.filter(t => (!t.status || t.status === "APPROVED") && !t.isGrc);
       setStories(approvedStories);
     } catch (err) {
       console.error("Error fetching recent stories:", err);
