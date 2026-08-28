@@ -54,8 +54,7 @@ export default function Login() {
     
     kingsChatWebSdk.login({
       clientId: clientId,
-      scopes: ["profile", "email"],
-      redirectUri: "http://148.66.154.48:8083"
+      scopes: ["profile"]
     })
     .then(authResponse => {
        console.log("[KingsChat] Auth response received:", Object.keys(authResponse));
