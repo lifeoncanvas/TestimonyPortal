@@ -758,7 +758,7 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
 
           {form.fillerType === "Other" && (
             <div className="mms-field" style={{ marginBottom: '24px' }}>
-              <label style={{ fontSize: '14px', fontWeight: '600' }}>Who are you with?</label>
+              <label style={{ fontSize: '14px', fontWeight: '600' }}>Please state your name or department.</label>
               <input
                 placeholder="Please specify"
                 value={form.fillerOther}
@@ -1300,7 +1300,7 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
                   return;
                 }
                 if (form.fillerType === "Other" && !form.fillerOther.trim()) {
-                  setError("Please specify who you are with.");
+                  setError("Please state your name or department.");
                   return;
                 }
                 setError(null);
