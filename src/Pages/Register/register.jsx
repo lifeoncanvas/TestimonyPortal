@@ -73,75 +73,56 @@ export default function Register() {
     setKingschatLoading(true);
     
     const clientId = process.env.REACT_APP_KINGSCHAT_CLIENT_ID || "4e67fd93-25ee-458b-9fde-6bcf6a1c5e9a";
+    const sessionId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
     
-    console.log("[KingsChat] Starting login with clientId:", clientId);
-    console.log("[KingsChat] redirect_uri (origin):", window.location.origin);
+    const loginUrl = `https://accounts.kingschat.online/log-in?clientId=${clientId}&origin=${sessionId}`;
     
-    kingsChatWebSdk.login({
-      clientId: clientId,
-      scopes: ["profile"]
-    })
-    .then(authResponse => {
-       console.log("[KingsChat] Auth response received:", Object.keys(authResponse));
-       const token = authResponse.accessToken;
-       if (!token) throw new Error("No access token received from KingsChat");
-       
-       return fetch("https://connect.kingsch.at/developer/api/user/profile", {
-         headers: {
-           "Authorization": `Bearer ${token}`,
-           "api-key": process.env.REACT_APP_KINGSCHAT_API_KEY || "FBDOzHxVmtEAauNceYMcDQ30SoZTlj7GW3QPI8SYH4k="
-         }
-       });
-    })
-    .then(res => {
-      if (!res.ok) throw new Error("Failed to fetch KingsChat profile");
-      return res.json();
-    })
-    .then(async (kingschatUserRaw) => {
-      let userObj = kingschatUserRaw;
-      if (kingschatUserRaw.profile) userObj = kingschatUserRaw.profile;
-      else if (kingschatUserRaw.user) userObj = kingschatUserRaw.user;
-      else if (kingschatUserRaw.data) userObj = kingschatUserRaw.data;
-      
-      if (userObj && userObj.id) {
-         const name = `${userObj.first_name || ""} ${userObj.last_name || ""}`.trim() || "KingsChat User";
-         const email = userObj.email || `${userObj.id}@kingschat.com`;
-         
-         try {
-            const res = await api.post("/api/auth/kingschat", {
-              name, email,
-              church: "Christ Embassy Virtual Church",
-              zone: "Virtual Zone 1",
-              country: "Nigeria",
-            });
-      
-            localStorage.setItem("token", res.data.token);
-            localStorage.setItem("user", JSON.stringify(res.data.user));
-            navigate("/");
-         } catch (err) {
-            setError(err.response?.data?.message || "KingsChat backend login failed.");
+    const width = 600;
+    const height = 700;
+    const left = window.screen.width / 2 - width / 2;
+    const top = window.screen.height / 2 - height / 2;
+    
+    const popup = window.open(loginUrl, "KingsChatLogin", `width=${width},height=${height},top=${top},left=${left}`);
+    
+    if (!popup) {
+        setError("Please allow popups for this site and try again.");
+        setKingschatLoading(false);
+        return;
+    }
+
+    let checks = 0;
+    const pollInterval = setInterval(async () => {
+        checks++;
+        if (popup.closed && checks > 2) {
+            clearInterval(pollInterval);
             setKingschatLoading(false);
-         }
-      }
-    })
-    .catch(err => {
-       console.error("[KingsChat] Login error:", err);
-       console.error("[KingsChat] Current origin:", window.location.origin);
-       
-       let userMessage;
-       if (err.message?.includes("User closed window")) {
-         userMessage = "KingsChat login was cancelled. Please allow access in the popup window to sign in.";
-       } else if (err.message?.includes("enable popups")) {
-         userMessage = "Please allow popups for this site and try again.";
-       } else if (err.message?.includes("Not allowed message origin")) {
-         userMessage = "Authentication error. Please contact support.";
-       } else {
-         userMessage = "KingsChat login failed. Please try again.";
-       }
-       
-       setError(userMessage);
-       setKingschatLoading(false);
-    });
+        }
+        
+        try {
+            const res = await api.get(`/api/auth/kingschat/poll/${sessionId}`);
+            if (res.status === 200 && res.data && res.data.token) {
+                clearInterval(pollInterval);
+                if (!popup.closed) popup.close();
+                localStorage.setItem("token", res.data.token);
+                localStorage.setItem("user", JSON.stringify(res.data.user));
+                navigate("/");
+            }
+        } catch (err) {
+            if (err.response && err.response.status !== 202) {
+                clearInterval(pollInterval);
+                if (!popup.closed) popup.close();
+                setError(err.response?.data?.message || "KingsChat login failed on the server.");
+                setKingschatLoading(false);
+            }
+        }
+        
+        if (checks > 150) {
+            clearInterval(pollInterval);
+            setKingschatLoading(false);
+            if (!popup.closed) popup.close();
+            setError("Login timed out.");
+        }
+    }, 2000);
   };
 
   return (
