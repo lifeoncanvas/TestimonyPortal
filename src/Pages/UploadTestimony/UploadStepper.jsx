@@ -335,11 +335,12 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
   const [editId,     setEditId]     = useState(null);
 
   const [form, setForm] = useState({
+    fillerType: "", fillerOther: "",
     title: "", categoryId: "", country: "", description: "",
     state: "", city: "", fullName: "", telephoneNumber: "", age: "", gender: "",
     conditionProblem: "", conditionDuration: "", unableToDoBefore: "",
     whatHappenedDuringProgram: "", ableToDoNow: "", inviterOrNextOfKinDetails: "",
-    healingCentreLocation: "", attendeesAtVenue: "", isGrc: false,
+    healingCentreLocation: "", zone: "",
   });
   const [uploadedFiles, setUploadedFiles] = useState([]);
 
@@ -376,8 +377,9 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
             ableToDoNow: t.ableToDoNow || "",
             inviterOrNextOfKinDetails: t.inviterOrNextOfKinDetails || "",
             healingCentreLocation: t.healingCentreLocation || "",
-            attendeesAtVenue: t.attendeesAtVenue || "",
-            isGrc: t.isGrc || false,
+            zone: t.zone || "",
+            fillerType: t.fillerType || "",
+            fillerOther: t.fillerOther || "",
           });
         })
         .catch((err) => {
@@ -502,8 +504,9 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
         ableToDoNow: form.ableToDoNow,
         inviterOrNextOfKinDetails: form.inviterOrNextOfKinDetails,
         healingCentreLocation: form.healingCentreLocation,
-        attendeesAtVenue: form.attendeesAtVenue ? Number(form.attendeesAtVenue) : null,
-        isGrc: form.isGrc,
+        zone: form.zone,
+        fillerType: form.fillerType,
+        fillerOther: form.fillerOther,
       };
       
       if (editId) {
@@ -739,7 +742,32 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
         <div className="mms-card">
           <span className="mms-step-eyebrow">Step 1 of {steps.length}</span>
           <h2>Choose a Format</h2>
-          <p className="mms-card-sub">How would you like to share your testimony?</p>
+
+          <div className="mms-field" style={{ marginBottom: '16px' }}>
+            <label style={{ fontSize: '14px', fontWeight: '600' }}>Who is filling the form? <span style={{ color: "#d97706" }}>*</span></label>
+            <select
+              value={form.fillerType}
+              onChange={(e) => set("fillerType", e.target.value)}
+            >
+              <option value="">Select an option</option>
+              <option value="GRC office">GRC office</option>
+              <option value="Organizer">Organizer</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
+          {form.fillerType === "Other" && (
+            <div className="mms-field" style={{ marginBottom: '24px' }}>
+              <label style={{ fontSize: '14px', fontWeight: '600' }}>Who are you with?</label>
+              <input
+                placeholder="Please specify"
+                value={form.fillerOther}
+                onChange={(e) => set("fillerOther", e.target.value)}
+              />
+            </div>
+          )}
+
+          <p className="mms-card-sub" style={{ marginTop: '24px' }}>How would you like to share your testimony?</p>
 
           <div className="mms-format-grid">
             {FORMATS.map((f) => (
@@ -841,6 +869,17 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
 
             {error && <div className="mms-error">{error}</div>}
 
+            <div className="mms-row">
+              <div className="mms-field">
+                <label>Name</label>
+                <input placeholder="e.g. John Doe" value={form.fullName} onChange={(e) => set("fullName", e.target.value)} />
+              </div>
+              <div className="mms-field">
+                <label>Zone</label>
+                <input placeholder="e.g. Zone 1" value={form.zone} onChange={(e) => set("zone", e.target.value)} />
+              </div>
+            </div>
+
             <div className="mms-field">
               <label>Testimony Title <span style={{ color: "#d97706" }}>*</span></label>
               <input
@@ -879,15 +918,9 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
               <input placeholder="e.g. Ikeja" value={form.city} onChange={(e) => set("city", e.target.value)} />
             </div>
 
-            <div className="mms-row">
-              <div className="mms-field">
-                <label>Full Name</label>
-                <input placeholder="e.g. John Doe" value={form.fullName} onChange={(e) => set("fullName", e.target.value)} />
-              </div>
-              <div className="mms-field">
-                <label>Telephone Number (include country code)</label>
-                <input placeholder="+234..." value={form.telephoneNumber} onChange={(e) => set("telephoneNumber", e.target.value)} />
-              </div>
+            <div className="mms-field">
+              <label>Telephone Number (include country code)</label>
+              <input placeholder="+234..." value={form.telephoneNumber} onChange={(e) => set("telephoneNumber", e.target.value)} />
             </div>
 
             <div className="mms-row">
@@ -935,29 +968,12 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
               <input placeholder="Details..." value={form.inviterOrNextOfKinDetails} onChange={(e) => set("inviterOrNextOfKinDetails", e.target.value)} />
             </div>
 
-            <div className="mms-row">
-              <div className="mms-field">
-                <label>Location of Healing Centre/Crusade</label>
-                <input placeholder="e.g. Online, Center A" value={form.healingCentreLocation} onChange={(e) => set("healingCentreLocation", e.target.value)} />
-              </div>
-              <div className="mms-field">
-                <label>Number of attendees at Venue</label>
-                <input type="number" placeholder="e.g. 150" value={form.attendeesAtVenue} onChange={(e) => set("attendeesAtVenue", e.target.value)} />
-              </div>
+            <div className="mms-field">
+              <label>Location of Healing Centre/Crusade</label>
+              <input placeholder="e.g. Online, Center A" value={form.healingCentreLocation} onChange={(e) => set("healingCentreLocation", e.target.value)} />
             </div>
 
-            <div className="mms-field" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '16px' }}>
-              <input
-                type="checkbox"
-                id="isGrcCheckbox"
-                checked={form.isGrc}
-                onChange={(e) => set("isGrc", e.target.checked)}
-                style={{ width: 'auto', margin: 0, cursor: 'pointer' }}
-              />
-              <label htmlFor="isGrcCheckbox" style={{ margin: 0, cursor: 'pointer', fontWeight: 600 }}>
-                Mark as GRC Testimony (Private)
-              </label>
-            </div>
+
 
             <div className="mms-field">
               <label>Your Testimony {isText ? "" : "(Optional)"}</label>
@@ -1242,7 +1258,7 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
                     state: "", city: "", fullName: "", telephoneNumber: "", age: "", gender: "",
                     conditionProblem: "", conditionDuration: "", unableToDoBefore: "",
                     whatHappenedDuringProgram: "", ableToDoNow: "", inviterOrNextOfKinDetails: "",
-                    healingCentreLocation: "", attendeesAtVenue: "", isGrc: false,
+                    healingCentreLocation: "", zone: "",
                   });
                   setUploadedFiles([]);
                 }}
@@ -1278,8 +1294,19 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
           {step === S.FORMAT && (
             <button
               className="mms-btn-primary"
-              onClick={() => setStep(S.STORY)}
-              disabled={!format}
+              onClick={() => {
+                if (!form.fillerType) {
+                  setError("Please select who is filling the form before continuing.");
+                  return;
+                }
+                if (form.fillerType === "Other" && !form.fillerOther.trim()) {
+                  setError("Please specify who you are with.");
+                  return;
+                }
+                setError(null);
+                setStep(S.STORY);
+              }}
+              disabled={!format || !form.fillerType || (form.fillerType === "Other" && !form.fillerOther.trim())}
             >
               Continue →
             </button>
