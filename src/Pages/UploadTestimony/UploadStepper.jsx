@@ -758,7 +758,7 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
 
           {form.fillerType === "Other" && (
             <div className="mms-field" style={{ marginBottom: '24px' }}>
-              <label style={{ fontSize: '14px', fontWeight: '600' }}>Please state your name or department.</label>
+              <label style={{ fontSize: '14px', fontWeight: '600', textTransform: 'none' }}>Please state your name or department.</label>
               <input
                 placeholder="Please specify"
                 value={form.fillerOther}
