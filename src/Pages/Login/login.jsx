@@ -47,14 +47,15 @@ export default function Login() {
     setError("");
     setKingschatLoading(true);
     
-    const clientId = process.env.REACT_APP_KINGSCHAT_CLIENT_ID || "d19351b1-4c19-4319-b823-e829dfc75cd5";
+    const clientId = process.env.REACT_APP_KINGSCHAT_CLIENT_ID || "4e67fd93-25ee-458b-9fde-6bcf6a1c5e9a";
     
     console.log("[KingsChat] Starting login with clientId:", clientId);
     console.log("[KingsChat] redirect_uri (origin):", window.location.origin);
     
     kingsChatWebSdk.login({
       clientId: clientId,
-      scopes: ["profile", "email"]
+      scopes: ["profile", "email"],
+      redirectUri: "http://148.66.154.48:8083"
     })
     .then(authResponse => {
        console.log("[KingsChat] Auth response received:", Object.keys(authResponse));
