@@ -750,8 +750,9 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
               onChange={(e) => set("fillerType", e.target.value)}
             >
               <option value="">Select an option</option>
-              <option value="GRC office">GRC office</option>
-              <option value="Organizer">Organizer</option>
+              <option value="GRC Office">GRC Office</option>
+              <option value="Organiser">Organiser</option>
+              <option value="Zonal Manager">Zonal Manager</option>
               <option value="Other">Other</option>
             </select>
           </div>

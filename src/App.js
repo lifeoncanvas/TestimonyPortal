@@ -45,8 +45,8 @@ function App() {
 
       <Routes>
         <Route path="/" element={<Homepage />} />
-        <Route path="/browse" element={<Browse />} />
-        <Route path="/testimony/:id" element={<TestimonyDetails />} />
+        <Route path="/browse" element={<ProtectedRoute requireAdmin={true}><Browse /></ProtectedRoute>} />
+        <Route path="/testimony/:id" element={<ProtectedRoute requireAdmin={true}><TestimonyDetails /></ProtectedRoute>} />
         <Route path="/upload" element={<ProtectedRoute><UploadTestimony /></ProtectedRoute>} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />

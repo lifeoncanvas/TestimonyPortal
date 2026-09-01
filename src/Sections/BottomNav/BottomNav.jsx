@@ -7,6 +7,14 @@ export default function BottomNav({ isLoggedIn }) {
   // If not logged in, check from localStorage as fallback
   const loggedIn = isLoggedIn !== undefined ? isLoggedIn : !!localStorage.getItem("token");
 
+  let isAdmin = false;
+  if (loggedIn) {
+    try {
+      const u = JSON.parse(localStorage.getItem("user"));
+      isAdmin = u?.role === "ADMIN";
+    } catch (e) {}
+  }
+
   const items = [
     {
       key: "home",
@@ -14,12 +22,12 @@ export default function BottomNav({ isLoggedIn }) {
       label: "Home",
       path: "/",
     },
-    {
+    ...(isAdmin ? [{
       key: "discover",
       icon: "🔍",
       label: "Discover",
       path: "/browse",
-    },
+    }] : []),
     {
       key: "upload",
       icon: "+",

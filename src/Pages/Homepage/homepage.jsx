@@ -419,6 +419,8 @@ export default function Homepage() {
       {/* ══ LEFT SIDEBAR (desktop only) ═════════════════════ */}
       <aside className="sidebar-left">
 
+        {currentUser?.role === "ADMIN" && (
+        <>
         {/* Category grid */}
         <p className="sidebar-heading">Browse by Category</p>
         <div className="category-grid">
@@ -435,6 +437,8 @@ export default function Homepage() {
             </button>
           ))}
         </div>
+        </>
+        )}
 
         {/* Prayer streak — below categories on desktop */}
         <section className="prayer-card">
@@ -462,13 +466,22 @@ export default function Homepage() {
               <button className="hero-btn-primary" onClick={() => navigate("/upload")}>
                 Share Your Story
               </button>
-              <button className="hero-btn-secondary" onClick={() => navigate("/browse")}>
-                Browse Miracles
-              </button>
+              {currentUser?.role === "ADMIN" && (
+                <button className="hero-btn-secondary" onClick={() => navigate("/browse")}>
+                  Browse Miracles
+                </button>
+              )}
+              {isLoggedIn && currentUser?.role !== "ADMIN" && (
+                <button className="hero-btn-secondary" onClick={() => navigate("/my-testimonies")}>
+                  My Testimonies
+                </button>
+              )}
             </div>
           </div>
         </section>
 
+        {currentUser?.role === "ADMIN" && (
+          <>
         {/* CATEGORY PILLS */}
         <section className="categories">
           {CATEGORIES.map((cat) => (
@@ -562,6 +575,8 @@ export default function Homepage() {
 
         {/* MOBILE-ONLY: Category grid + prayer card */}
         <div className="mobile-only">
+          {currentUser?.role === "ADMIN" && (
+            <>
           <div className="section-header">
             <h2>Browse by Category</h2>
             <span className="see-all" role="button" tabIndex={0}
@@ -581,6 +596,8 @@ export default function Homepage() {
               </button>
             ))}
           </div>
+          </>
+          )}
 
           <section className="prayer-card">
             <small>✦ PRAYER STREAK</small>
@@ -658,6 +675,8 @@ export default function Homepage() {
             }
           </div>
         </section>
+        </>
+        )}
 
       </main>{/* end .main-feed */}
 

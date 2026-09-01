@@ -192,22 +192,33 @@ export default function AdminUsers() {
                     </span>
                   </div>
 
-                  <div className="au-user-actions">
-                    {isAdmin ? (
+                  <div className="au-user-actions" style={{display: 'flex', gap: '8px', flexWrap: 'wrap'}}>
+                    {u.role !== "USER" && (
                       <button
                         className="au-btn demote"
                         disabled={updatingId === u.id}
                         onClick={() => handleRoleChange(u.id, "USER", u.name || u.email)}
                       >
-                        <UserX size={14} /> Remove Admin Privileges
+                        <UserX size={14} /> Make User
                       </button>
-                    ) : (
+                    )}
+                    {u.role !== "ADMIN" && (
                       <button
                         className="au-btn promote"
                         disabled={updatingId === u.id}
                         onClick={() => handleRoleChange(u.id, "ADMIN", u.name || u.email)}
                       >
                         <UserCheck size={14} /> Make Admin
+                      </button>
+                    )}
+                    {u.role !== "ZONAL_MANAGER" && (
+                      <button
+                        className="au-btn promote"
+                        style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}
+                        disabled={updatingId === u.id}
+                        onClick={() => handleRoleChange(u.id, "ZONAL_MANAGER", u.name || u.email)}
+                      >
+                        <UserCheck size={14} /> Make Zonal Manager
                       </button>
                     )}
                   </div>
