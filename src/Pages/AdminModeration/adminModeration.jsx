@@ -634,9 +634,6 @@ export default function AdminModeration() {
                     >
                       <TrendingUp size={13} /> {t.isTrending ? "Untrend" : "Trend"}
                     </button>
-                    <button className="mod-btn delete" onClick={() => handleDelete(t.id)}>
-                      <Trash2 size={13} /> Delete
-                    </button>
                   </div>
                 </div>
               </div>
