@@ -104,10 +104,10 @@ const API = {
   media:      (id) => `/api/testimonies/${id}/media`,
 };
 
-// ─── Step Definitions (dynamic based on format) ───────────────────────────────
-const stepsFor = (formatId) => {
+// ─── Step Definitions ─────────────────────────────────────────────────────────
+const stepsFor = () => {
   return [
-    { label: "Format",   icon: "◇" },
+    { label: "Role",     icon: "◇" },
     { label: "Story",    icon: "✦" },
     { label: "Preview",  icon: "◉" },
     { label: "Done",     icon: "✧" },
@@ -115,237 +115,52 @@ const stepsFor = (formatId) => {
 };
 
 const S = {
-  FORMAT:  0,
+  ROLE:    0,
   STORY:   1,
   PREVIEW: 2,
   DONE:    3,
 };
 
-// ─── useRecorder hook ─────────────────────────────────────────────────────────
-function useRecorder(type /* "video" | "audio" */) {
-  const [recState, setRecState] = useState("idle"); // idle | ready | recording | done
-  const [elapsed,  setElapsed]  = useState(0);
-  const [blobUrl,  setBlobUrl]  = useState(null);
-  const [blobFile, setBlobFile] = useState(null);
-  const [bars,     setBars]     = useState(Array(28).fill(8));
-  const [error,    setError]    = useState(null);
-
-  const mediaRef    = useRef(null); // <video> element for cam preview
-  const recorderRef = useRef(null);
-  const chunksRef   = useRef([]);
-  const timerRef    = useRef(null);
-  const streamRef   = useRef(null);
-  const analyserRef = useRef(null);
-  const animRef     = useRef(null);
-
-  // Animate waveform from AnalyserNode
-  const animateBars = useCallback(() => {
-    if (!analyserRef.current) return;
-    const data = new Uint8Array(analyserRef.current.frequencyBinCount);
-    analyserRef.current.getByteFrequencyData(data);
-    const newBars = Array.from({ length: 28 }, (_, i) => {
-      const idx = Math.floor((i / 28) * data.length);
-      return 6 + (data[idx] / 255) * 44;
-    });
-    setBars(newBars);
-    animRef.current = requestAnimationFrame(animateBars);
-  }, []);
-
-  const stop = useCallback(() => {
-    clearInterval(timerRef.current);
-    cancelAnimationFrame(animRef.current);
-    try {
-      recorderRef.current?.stop();
-    } catch (e) {}
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((t) => t.stop());
-      streamRef.current = null;
-    }
-    if (mediaRef.current) mediaRef.current.srcObject = null;
-  }, []);
-
-  const init = useCallback(async () => {
-    setError(null);
-    setBlobUrl(null);
-    setBlobFile(null);
-    setElapsed(0);
-    try {
-      const constraints =
-        type === "video" ? { video: true, audio: true } : { audio: true };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      streamRef.current = stream;
-
-      if (type === "video" && mediaRef.current) {
-        mediaRef.current.srcObject = stream;
-        mediaRef.current.play().catch(() => {});
-      }
-      setRecState("ready");
-    } catch (e) {
-      console.error(e);
-      setError(
-        type === "video"
-          ? "Could not access your camera or microphone. Please check browser permissions."
-          : "Could not access your microphone. Please check browser permissions."
-      );
-      setRecState("idle");
-    }
-  }, [type]);
-
-  const start = async () => {
-    setBlobUrl(null);
-    setBlobFile(null);
-    setElapsed(0);
-    setError(null);
-    chunksRef.current = [];
-
-    let stream = streamRef.current;
-    if (!stream) {
-      try {
-        const constraints =
-          type === "video" ? { video: true, audio: true } : { audio: true };
-        stream = await navigator.mediaDevices.getUserMedia(constraints);
-        streamRef.current = stream;
-      } catch (e) {
-        console.error(e);
-        setError(
-          type === "video"
-            ? "Could not access your camera or microphone. Please check browser permissions."
-            : "Could not access your microphone. Please check browser permissions."
-        );
-        return;
-      }
-    }
-
-    try {
-      // Hook up audio analyser
-      const ctx      = new AudioContext();
-      const source   = ctx.createMediaStreamSource(stream);
-      const analyser = ctx.createAnalyser();
-      analyser.fftSize = 64;
-      source.connect(analyser);
-      analyserRef.current = analyser;
-      animRef.current = requestAnimationFrame(animateBars);
-
-      if (type === "video" && mediaRef.current) {
-        mediaRef.current.srcObject = stream;
-        mediaRef.current.play().catch(() => {});
-      }
-
-      const recorder = new MediaRecorder(stream);
-      recorderRef.current = recorder;
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data);
-      };
-      recorder.onstop = () => {
-        cancelAnimationFrame(animRef.current);
-        setBars(Array(28).fill(8));
-        const mime = type === "video" ? "video/webm" : "audio/webm";
-        const blob = new Blob(chunksRef.current, { type: mime });
-        const file = new File([blob], `recording.webm`, { type: mime });
-        setBlobFile(file);
-        setBlobUrl(URL.createObjectURL(blob));
-        setRecState("done");
-      };
-      recorder.start();
-      setRecState("recording");
-      timerRef.current = setInterval(() => setElapsed((s) => s + 1), 1000);
-    } catch (e) {
-      console.error(e);
-      setError("Recording failed to start.");
-    }
-  };
-
-  const reset = () => {
-    stop();
-    setBlobUrl(null);
-    setBlobFile(null);
-    setElapsed(0);
-    setBars(Array(28).fill(8));
-    setRecState("idle");
-    init();
-  };
-
-  const fmt = (s) =>
-    `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
-
-  return { recState, elapsed, blobUrl, blobFile, bars, error, mediaRef, start, stop, reset, init, fmt };
-}
-
-// ─── Waveform Component ───────────────────────────────────────────────────────
-function Waveform({ bars, live }) {
-  return (
-    <div className="mms-waveform">
-      {bars.map((h, i) => (
-        <div
-          key={i}
-          className={`mms-wave-bar${live ? " live" : ""}`}
-          style={{ height: `${h}px` }}
-        />
-      ))}
-    </div>
-  );
-}
-
-function parseCSV(text) {
-  const lines = [];
-  let row = [""];
-  let inQuotes = false;
-
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i];
-    const next = text[i+1];
-
-    if (c === '"') {
-      if (inQuotes && next === '"') {
-        row[row.length - 1] += '"';
-        i++;
-      } else {
-        inQuotes = !inQuotes;
-      }
-    } else if (c === ',' && !inQuotes) {
-      row.push('');
-    } else if ((c === '\r' || c === '\n') && !inQuotes) {
-      if (c === '\r' && next === '\n') {
-        i++;
-      }
-      lines.push(row);
-      row = [''];
-    } else {
-      row[row.length - 1] += c;
-    }
-  }
-  if (row.length > 1 || row[0] !== '') {
-    lines.push(row);
-  }
-  return lines;
-}
-
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function UploadStepper({ onSuccess, onSubmit }) {
   const navigate = useNavigate();
   const [step,       setStep]       = useState(0);
-  const [format,     setFormat]     = useState(null);
   const [categories, setCategories] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [error,      setError]      = useState(null);
   const [testimonyId,setTestimonyId]= useState(null);
-  const [progress,   setProgress]   = useState(0);
-  const [dragOver,   setDragOver]   = useState(false);
-  const [parsedStories, setParsedStories] = useState([]);
   const [editId,     setEditId]     = useState(null);
 
   const [form, setForm] = useState({
-    fillerType: "", fillerOther: "",
-    title: "", categoryId: "", country: "", description: "",
-    state: "", city: "", fullName: "", telephoneNumber: "", age: "", gender: "",
-    conditionProblem: "", conditionDuration: "", unableToDoBefore: "",
-    whatHappenedDuringProgram: "", ableToDoNow: "", inviterOrNextOfKinDetails: "",
-    healingCentreLocation: "", zone: "",
+    fillerType: "",
+    fillerOther: "",
+    firstName: "",
+    lastName: "",
+    testifierName: "",
+    zone: "",
+    title: "",
+    categoryId: "",
+    country: "",
+    state: "",
+    city: "",
+    telephoneNumber: "",
+    email: "",
+    age: "",
+    gender: "",
+    conditionProblem: "",
+    conditionDuration: "",
+    unableToDoBefore: "",
+    whatHappenedDuringProgram: "",
+    ableToDoNow: "",
+    inviterDetails: "",
+    healingCentreLocation: "",
+    description: "",
   });
-  const [uploadedFiles, setUploadedFiles] = useState([]);
 
-  const videoRec = useRecorder("video");
-  const audioRec = useRecorder("audio");
+  // Separate upload file states
+  const [medicalFiles, setMedicalFiles] = useState([]);
+  const [beforeFiles, setBeforeFiles]   = useState([]);
+  const [afterFiles, setAfterFiles]     = useState([]);
 
   // ── Fetch categories from API on mount
   useEffect(() => {
@@ -354,32 +169,35 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
     if (editParam) {
       const id = Number(editParam);
       setEditId(id);
-      setFormat(FORMATS.find(f => f.id === "text") || FORMATS[0]);
-      setStep(1); // Go straight to STORY step
+      setStep(1);
       api.get(`/api/testimonies/${id}`)
         .then((res) => {
           const t = res.data;
+          const nameParts = (t.fullName || "").split(" ");
           setForm({
+            fillerType: t.fillerType || "GRC Office",
+            fillerOther: t.fillerOther || "",
+            firstName: nameParts[0] || "",
+            lastName: nameParts.slice(1).join(" ") || "",
+            testifierName: t.fullName || "",
+            zone: t.zone || "",
             title: t.title || "",
             categoryId: t.category?.id ? String(t.category.id) : "",
             country: t.country || "",
-            description: t.description || "",
             state: t.state || "",
             city: t.city || "",
-            fullName: t.fullName || "",
             telephoneNumber: t.telephoneNumber || "",
-            age: t.age || "",
+            email: t.email || "",
+            age: t.age ? String(t.age) : "",
             gender: t.gender || "",
             conditionProblem: t.conditionProblem || "",
             conditionDuration: t.conditionDuration || "",
             unableToDoBefore: t.unableToDoBefore || "",
             whatHappenedDuringProgram: t.whatHappenedDuringProgram || "",
             ableToDoNow: t.ableToDoNow || "",
-            inviterOrNextOfKinDetails: t.inviterOrNextOfKinDetails || "",
+            inviterDetails: t.inviterOrNextOfKinDetails || "",
             healingCentreLocation: t.healingCentreLocation || "",
-            zone: t.zone || "",
-            fillerType: t.fillerType || "",
-            fillerOther: t.fillerOther || "",
+            description: t.description || "",
           });
         })
         .catch((err) => {
@@ -395,80 +213,151 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
       .catch((err) => {
         console.error("Error fetching categories:", err);
         setError("Could not load categories from backend.");
-      })
-      .finally(() => {});
+      });
   }, []);
 
-  const set    = (k, v) => setForm((p) => ({ ...p, [k]: v }));
-  const isText = format?.id === "text";
-  const isBulk = format?.id === "bulk-csv";
-  const steps  = stepsFor(format?.id);
+  const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
+  const steps = stepsFor();
   const PREVIEW = S.PREVIEW;
   const DONE    = S.DONE;
 
-  // Auto-initialize and cleanup media streams based on stepper state
-  useEffect(() => {
-    if (step === S.STORY) {
-      if (format?.id === "record-video") {
-        videoRec.init();
-      } else {
-        videoRec.stop();
-      }
-      
-      if (format?.id === "record-audio") {
-        audioRec.init();
-      } else {
-        audioRec.stop();
-      }
-    } else {
-      videoRec.stop();
-      audioRec.stop();
-    }
-    
-    // Cleanup on unmount
-    return () => {
-      videoRec.stop();
-      audioRec.stop();
-    };
-  }, [step, format?.id]);
-
-  const addFiles = (sel) =>
-    setUploadedFiles((p) => [
+  const addMedicalFiles = (sel) =>
+    setMedicalFiles((p) => [
       ...p,
       ...Array.from(sel).map((f) => ({ file: f, url: URL.createObjectURL(f) })),
     ]);
-  const removeFile = (i) => setUploadedFiles((p) => p.filter((_, idx) => idx !== i));
+  const removeMedicalFile = (i) => setMedicalFiles((p) => p.filter((_, idx) => idx !== i));
 
-  const validateStoryForm = () => {
-    if (!form.title.trim()) {
-      setError("Please enter a Testimony Title.");
+  const addBeforeFiles = (sel) =>
+    setBeforeFiles((p) => [
+      ...p,
+      ...Array.from(sel).map((f) => ({ file: f, url: URL.createObjectURL(f) })),
+    ]);
+  const removeBeforeFile = (i) => setBeforeFiles((p) => p.filter((_, idx) => idx !== i));
+
+  const addAfterFiles = (sel) =>
+    setAfterFiles((p) => [
+      ...p,
+      ...Array.from(sel).map((f) => ({ file: f, url: URL.createObjectURL(f) })),
+    ]);
+  const removeAfterFile = (i) => setAfterFiles((p) => p.filter((_, idx) => idx !== i));
+
+  const validateRoleForm = () => {
+    if (!form.fillerType) {
+      setError("Please select who is filling the form.");
       return false;
     }
-    if (!form.categoryId) {
-      setError("Please select a Category from the dropdown.");
-      return false;
-    }
-    if (format?.id === "record-video" && (!videoRec.blobFile || videoRec.recState !== "done")) {
-      setError("Please record your video testimony before continuing.");
-      return false;
-    }
-    if (format?.id === "record-audio" && (!audioRec.blobFile || audioRec.recState !== "done")) {
-      setError("Please record your audio testimony before continuing.");
-      return false;
-    }
-    if (format?.id === "upload" && uploadedFiles.length === 0) {
-      setError("Please upload your testimony video file before continuing.");
-      return false;
-    }
-    const hasText = form.description.trim() || form.whatHappenedDuringProgram.trim() || form.conditionProblem.trim();
-    if (isText && !hasText) {
-      setError("Please write your testimony details in the form.");
+    if (form.fillerType === "Other" && !form.fillerOther.trim()) {
+      setError("Please state your name or department.");
       return false;
     }
     return true;
   };
 
-  // ── Submit testimony text → get ID
+  const validateStoryForm = () => {
+    if (!validateRoleForm()) return false;
+
+    if (form.fillerType === "Zonal Manager") {
+      if (!form.zone.trim()) {
+        setError("Please enter the Name of Zone.");
+        return false;
+      }
+      if (!form.testifierName.trim()) {
+        setError("Please enter the Name of the Testifier.");
+        return false;
+      }
+    } else {
+      if (!form.firstName.trim()) {
+        setError("Please enter First Name.");
+        return false;
+      }
+      if (!form.lastName.trim()) {
+        setError("Please enter Last Name.");
+        return false;
+      }
+    }
+
+    if (!form.title.trim()) {
+      setError("Please enter Testimony Title.");
+      return false;
+    }
+    if (!form.categoryId) {
+      setError("Please select a Category.");
+      return false;
+    }
+    if (!form.country.trim()) {
+      setError("Please enter Country.");
+      return false;
+    }
+    if (!form.state.trim()) {
+      setError("Please enter State.");
+      return false;
+    }
+    if (!form.city.trim()) {
+      setError("Please enter City.");
+      return false;
+    }
+    if (!form.telephoneNumber.trim()) {
+      setError("Please enter Telephone Number.");
+      return false;
+    }
+    if (!form.age) {
+      setError("Please enter Age.");
+      return false;
+    }
+    if (!form.gender) {
+      setError("Please select Gender.");
+      return false;
+    }
+    if (!form.conditionProblem.trim()) {
+      setError("Please describe the Condition/Problem.");
+      return false;
+    }
+    if (!form.conditionDuration.trim()) {
+      setError("Please enter Duration of Condition/Problem.");
+      return false;
+    }
+    if (!form.unableToDoBefore.trim()) {
+      setError("Please fill out 'What could you not do before?'.");
+      return false;
+    }
+    if (!form.whatHappenedDuringProgram.trim()) {
+      setError("Please fill out 'What happened during the program?'.");
+      return false;
+    }
+    if (!form.ableToDoNow.trim()) {
+      setError("Please fill out 'What can you do now?'.");
+      return false;
+    }
+    if (!form.inviterDetails.trim()) {
+      setError("Please enter Name and Contact Details of the Person that invited you.");
+      return false;
+    }
+    if (!form.healingCentreLocation.trim()) {
+      setError("Please enter Location of Healing Centre/Crusade.");
+      return false;
+    }
+    if (!form.description.trim()) {
+      setError("Please write Your Testimony / Testimony Summary.");
+      return false;
+    }
+    if (medicalFiles.length === 0) {
+      setError("Please upload at least one Medical Report document or picture.");
+      return false;
+    }
+    if (beforeFiles.length === 0) {
+      setError("Please upload at least one 'Before' picture.");
+      return false;
+    }
+    if (afterFiles.length === 0) {
+      setError("Please upload at least one 'After' picture.");
+      return false;
+    }
+
+    return true;
+  };
+
+  // ── Submit testimony details → get ID
   const handleSubmitStory = async () => {
     setError(null);
     if (!validateStoryForm()) return;
@@ -476,15 +365,10 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
     try {
       let id = testimonyId;
       let finalDescription = form.description.trim();
-      if (!finalDescription) {
-        if (form.whatHappenedDuringProgram.trim()) {
-          finalDescription = form.whatHappenedDuringProgram.trim();
-        } else if (form.conditionProblem.trim()) {
-          finalDescription = form.conditionProblem.trim();
-        } else {
-          finalDescription = `[${format?.label || "Media"} Testimony]`;
-        }
-      }
+
+      const fullName = form.fillerType === "Zonal Manager"
+        ? form.testifierName.trim()
+        : `${form.firstName} ${form.lastName}`.trim();
 
       const reqBody = {
         title:       form.title,
@@ -493,8 +377,9 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
         country:     form.country,
         state:       form.state,
         city:        form.city,
-        fullName:    form.fullName,
+        fullName:    fullName,
         telephoneNumber: form.telephoneNumber,
+        email:       form.email,
         age:         form.age ? Number(form.age) : null,
         gender:      form.gender,
         conditionProblem: form.conditionProblem,
@@ -502,9 +387,9 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
         unableToDoBefore: form.unableToDoBefore,
         whatHappenedDuringProgram: form.whatHappenedDuringProgram,
         ableToDoNow: form.ableToDoNow,
-        inviterOrNextOfKinDetails: form.inviterOrNextOfKinDetails,
+        inviterOrNextOfKinDetails: form.inviterDetails,
         healingCentreLocation: form.healingCentreLocation,
-        zone: form.zone,
+        zone: form.fillerType === "Zonal Manager" ? form.zone : "",
         fillerType: form.fillerType,
         fillerOther: form.fillerOther,
       };
@@ -526,18 +411,12 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
     }
   };
 
-  // ── Upload media files + recorded blobs
+  // ── Upload media files
   const handleFinalSubmit = async () => {
     setError(null);
     setSubmitting(true);
     try {
-      const allFiles = [...uploadedFiles];
-      if (format?.id === "record-video" && videoRec.blobFile)
-        allFiles.push({ file: videoRec.blobFile, url: videoRec.blobUrl });
-      if (format?.id === "record-audio" && audioRec.blobFile)
-        allFiles.push({ file: audioRec.blobFile, url: audioRec.blobUrl });
-
-      const total = Math.max(allFiles.length, 1);
+      const allFiles = [...medicalFiles, ...beforeFiles, ...afterFiles];
       for (let i = 0; i < allFiles.length; i++) {
         const fd = new FormData();
         fd.append("file", allFiles[i].file);
@@ -547,7 +426,6 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
             "Content-Type": "multipart/form-data",
           },
         });
-        setProgress(Math.round(((i + 1) / total) * 100));
       }
 
       setStep(DONE);
@@ -561,114 +439,6 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
     }
   };
 
-  const handleCsvUpload = (e) => {
-    setError(null);
-    const file = e.target.files[0];
-    if (!file) return;
-
-    if (!file.name.endsWith(".csv")) {
-      setError("Please upload a valid CSV file.");
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const text = event.target.result;
-        const rows = parseCSV(text);
-        if (rows.length < 2) {
-          setError("CSV file is empty or missing data rows.");
-          return;
-        }
-
-        const headers = rows[0].map(h => h.trim().toLowerCase());
-        const titleIdx = headers.indexOf("title");
-        const descIdx = headers.indexOf("description");
-        const catIdx = headers.indexOf("category");
-        const countryIdx = headers.indexOf("country");
-
-        if (titleIdx === -1 || descIdx === -1) {
-          setError("CSV must contain at least 'title' and 'description' columns.");
-          return;
-        }
-
-        const list = [];
-        for (let i = 1; i < rows.length; i++) {
-          const row = rows[i];
-          if (row.length < 2 || !row[titleIdx]?.trim()) continue;
-
-          const catName = catIdx !== -1 ? row[catIdx]?.trim() : "";
-          let catId = "";
-          if (catName) {
-            const matched = categories.find(
-              c => c.name.toLowerCase() === catName.toLowerCase()
-            );
-            if (matched) catId = matched.id;
-          }
-          if (!catId) {
-            const othersCat = categories.find(c => c.name.toLowerCase() === "others") || categories[0];
-            catId = othersCat ? othersCat.id : "";
-          }
-
-          list.push({
-            title: row[titleIdx]?.trim(),
-            description: row[descIdx]?.trim() || "",
-            categoryId: Number(catId),
-            categoryName: catName || "Others",
-            country: countryIdx !== -1 ? row[countryIdx]?.trim() : "",
-          });
-        }
-
-        if (list.length === 0) {
-          setError("No valid testimony rows found in the CSV.");
-        } else {
-          setParsedStories(list);
-        }
-      } catch (err) {
-        setError("Failed to parse CSV file: " + err.message);
-      }
-    };
-    reader.readAsText(file);
-  };
-
-  const downloadCsvTemplate = () => {
-    const csvContent = "data:text/csv;charset=utf-8,title,description,category,country\n"
-      + "\"Miraculous Healing from Asthma\",\"I was healed completely after praying at the Healing Streams service.\",\"Healing Streams\",\"Nigeria\"\n"
-      + "\"Business Breakthrough\",\"Received a major contract after partnering with the ministry.\",\"Partnership\",\"South Africa\"";
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "testimonies_template.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const handleBulkSubmit = async () => {
-    setError(null);
-    setSubmitting(true);
-    setProgress(0);
-    try {
-      const total = parsedStories.length;
-      for (let i = 0; i < total; i++) {
-        const item = parsedStories[i];
-        await api.post(API.submit, {
-          title: item.title,
-          description: item.description,
-          categoryId: item.categoryId,
-          country: item.country,
-        });
-        setProgress(Math.round(((i + 1) / total) * 100));
-      }
-      setStep(DONE);
-      onSuccess?.({ bulkCount: total });
-    } catch (e) {
-      setError("Import failed: " + (e.response?.data?.message || e.message));
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   const goBack = () => {
     setError(null);
     setStep((s) => s - 1);
@@ -677,35 +447,16 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
   const selectedCategory = categories.find(
     (c) => String(c.id) === String(form.categoryId)
   );
-  const fmt = FORMATS.find((f) => f.id === format?.id);
 
-  // ── Preview media element
-  const previewMedia = () => {
-    if (format?.id === "record-video" && videoRec.blobUrl)
-      return <video src={videoRec.blobUrl} controls />;
-    if (format?.id === "record-audio" && audioRec.blobUrl)
-      return <audio src={audioRec.blobUrl} controls />;
-    if (uploadedFiles.length > 0) {
-      const f = uploadedFiles[0];
-      return f.file.type.startsWith("image")
-        ? <img src={f.url} alt="" />
-        : <video src={f.url} controls />;
-    }
-    return <span className="mms-preview-empty">✦</span>;
-  };
-
-  // ── Connector fill array (length = steps.length − 1)
   const connFill = steps.slice(0, -1).map((_, i) => step > i);
 
-  // ─── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="mms-root">
 
       {/* ── Header ── */}
       <header className="mms-header">
-        <span className="mms-eyebrow">My Miracle Story</span>
-        <h1>Share What <em>God</em> Has Done</h1>
-        <p>Your testimony is someone else's miracle waiting to happen.</p>
+        <span className="mms-eyebrow">Testimony Portal</span>
+        <h1>Share Your <em>Miracle</em> Story</h1>
       </header>
 
       {/* ── Stepper ── */}
@@ -736,20 +487,27 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
       </nav>
 
       {/* ══════════════════════════════════════════════
-          STEP 0 — Choose Format
+          STEP 0 — Role Selection
       ══════════════════════════════════════════════ */}
-      {step === S.FORMAT && (
+      {step === S.ROLE && (
         <div className="mms-card">
           <span className="mms-step-eyebrow">Step 1 of {steps.length}</span>
-          <h2>Choose a Format</h2>
+          <h2>Who is filling the form?</h2>
+          <p className="mms-card-sub">Please select an option to open the appropriate testimony form.</p>
 
-          <div className="mms-field" style={{ marginBottom: '16px' }}>
-            <label style={{ fontSize: '14px', fontWeight: '600' }}>Who is filling the form? <span style={{ color: "#d97706" }}>*</span></label>
+          {error && <div className="mms-error">{error}</div>}
+
+          <div className="mms-field" style={{ marginBottom: '24px' }}>
+            <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--gold-light)' }}>
+              Select Role / Department <span style={{ color: "#d97706" }}>*</span>
+            </label>
             <select
+              className={!form.fillerType ? "is-placeholder" : ""}
               value={form.fillerType}
-              onChange={(e) => set("fillerType", e.target.value)}
+              onChange={(e) => { set("fillerType", e.target.value); setError(null); }}
+              style={{ fontWeight: '600', padding: '14px 16px', fontSize: '15px' }}
             >
-              <option value="">Select an option</option>
+              <option value="" disabled hidden>Select an option</option>
               <option value="GRC Office">GRC Office</option>
               <option value="Organiser">Organiser</option>
               <option value="Zonal Manager">Zonal Manager</option>
@@ -759,433 +517,379 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
 
           {form.fillerType === "Other" && (
             <div className="mms-field" style={{ marginBottom: '24px' }}>
-              <label style={{ fontSize: '14px', fontWeight: '600', textTransform: 'none' }}>Please state your name or department.</label>
+              <label style={{ fontSize: '11px', fontWeight: '600' }}>
+                Please state your name or department <span style={{ color: "#d97706" }}>*</span>
+              </label>
               <input
-                placeholder="Please specify"
+                placeholder="Please specify..."
                 value={form.fillerOther}
                 onChange={(e) => set("fillerOther", e.target.value)}
               />
             </div>
           )}
-
-          <p className="mms-card-sub" style={{ marginTop: '24px' }}>How would you like to share your testimony?</p>
-
-          <div className="mms-format-grid">
-            {FORMATS.map((f) => (
-              <div
-                key={f.id}
-                className={`mms-format-tile${format?.id === f.id ? " selected" : ""}`}
-                onClick={() => setFormat(f)}
-                role="radio"
-                aria-checked={format?.id === f.id}
-              >
-                <div className="mms-format-check">✓</div>
-                <f.Icon />
-                <span className="mms-format-tile-label">{f.label}</span>
-                <span className="mms-format-tile-desc">{f.desc}</span>
-              </div>
-            ))}
-          </div>
         </div>
       )}
 
       {/* ══════════════════════════════════════════════
-          STEP 1 — Tell Your Story
+          STEP 1 — Story Form Input
       ══════════════════════════════════════════════ */}
       {step === S.STORY && (
-        isBulk ? (
-          <div className="mms-card">
-            <span className="mms-step-eyebrow">Step 2 of {steps.length}</span>
-            <h2>Bulk Import Testimonies</h2>
-            <p className="mms-card-sub">Upload a CSV file containing your testimonies.</p>
+        <div className="mms-card">
+          <span className="mms-step-eyebrow">Step 2 of {steps.length} — {form.fillerType} Form</span>
 
-            {error && <div className="mms-error">{error}</div>}
+          {error && <div className="mms-error">{error}</div>}
 
-            <div className="mms-upload-box" style={{ padding: "30px 20px" }}>
+          {/* Active Role Indicator */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justify: 'space-between',
+            background: 'var(--navy-input)',
+            border: '1px solid var(--gold-muted)',
+            borderRadius: '10px',
+            padding: '10px 14px',
+            marginBottom: '20px'
+          }}>
+            <span style={{ fontSize: '12px', color: 'var(--gold-light)', fontWeight: '600' }}>
+              Form Type: <strong>{form.fillerType}</strong> {form.fillerType === "Other" && `(${form.fillerOther})`}
+            </span>
+            <button
+              type="button"
+              className="mms-btn-secondary"
+              style={{ padding: '4px 10px', fontSize: '11px' }}
+              onClick={() => setStep(S.ROLE)}
+            >
+              Change Role
+            </button>
+          </div>
+
+          {/* Dynamic Row 1 & 2: Name / Zone fields */}
+          {form.fillerType === "Zonal Manager" ? (
+            <div className="mms-row">
+              <div className="mms-field">
+                <label>1. Name of Zone <span style={{ color: "#d97706" }}>*</span></label>
+                <input
+                  placeholder="e.g. Zone 1"
+                  value={form.zone}
+                  onChange={(e) => set("zone", e.target.value)}
+                />
+              </div>
+              <div className="mms-field">
+                <label>2. Name of the Testifier <span style={{ color: "#d97706" }}>*</span></label>
+                <input
+                  placeholder="e.g. John Doe"
+                  value={form.testifierName}
+                  onChange={(e) => set("testifierName", e.target.value)}
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="mms-row">
+              <div className="mms-field">
+                <label>First Name <span style={{ color: "#d97706" }}>*</span></label>
+                <input
+                  placeholder="e.g. John"
+                  value={form.firstName}
+                  onChange={(e) => set("firstName", e.target.value)}
+                />
+              </div>
+              <div className="mms-field">
+                <label>Last Name <span style={{ color: "#d97706" }}>*</span></label>
+                <input
+                  placeholder="e.g. Doe"
+                  value={form.lastName}
+                  onChange={(e) => set("lastName", e.target.value)}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Testimony Title */}
+          <div className="mms-field">
+            <label>Testimony Title <span style={{ color: "#d97706" }}>*</span></label>
+            <input
+              placeholder="e.g. God restored my health in three days"
+              value={form.title}
+              onChange={(e) => set("title", e.target.value)}
+            />
+          </div>
+
+          {/* Category */}
+          <div className="mms-field">
+            <label>Category <span style={{ color: "#d97706" }}>*</span></label>
+            <select
+              className={!form.categoryId ? "is-placeholder" : ""}
+              value={form.categoryId}
+              onChange={(e) => set("categoryId", e.target.value)}
+            >
+              <option value="" disabled hidden>Select a category</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Country, State, City */}
+          <div className="mms-row-3">
+            <div className="mms-field">
+              <label>Country <span style={{ color: "#d97706" }}>*</span></label>
+              <input
+                placeholder="Nigeria"
+                value={form.country}
+                onChange={(e) => set("country", e.target.value)}
+              />
+            </div>
+            <div className="mms-field">
+              <label>State <span style={{ color: "#d97706" }}>*</span></label>
+              <input
+                placeholder="e.g. Lagos"
+                value={form.state}
+                onChange={(e) => set("state", e.target.value)}
+              />
+            </div>
+            <div className="mms-field">
+              <label>City <span style={{ color: "#d97706" }}>*</span></label>
+              <input
+                placeholder="e.g. Ikeja"
+                value={form.city}
+                onChange={(e) => set("city", e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Telephone Number */}
+          <div className="mms-field">
+            <label>Telephone Number (include country code) <span style={{ color: "#d97706" }}>*</span></label>
+            <input
+              placeholder="+234..."
+              value={form.telephoneNumber}
+              onChange={(e) => set("telephoneNumber", e.target.value)}
+            />
+          </div>
+
+          {/* Email Address */}
+          <div className="mms-field">
+            <label>Email address</label>
+            <input
+              type="email"
+              placeholder="e.g. john@example.com"
+              value={form.email}
+              onChange={(e) => set("email", e.target.value)}
+            />
+          </div>
+
+          {/* Age & Gender */}
+          <div className="mms-row">
+            <div className="mms-field">
+              <label>Age <span style={{ color: "#d97706" }}>*</span></label>
+              <input
+                type="number"
+                placeholder="e.g. 35"
+                value={form.age}
+                onChange={(e) => set("age", e.target.value)}
+              />
+            </div>
+            <div className="mms-field">
+              <label>Gender <span style={{ color: "#d97706" }}>*</span></label>
+              <select
+                className={!form.gender ? "is-placeholder" : ""}
+                value={form.gender}
+                onChange={(e) => set("gender", e.target.value)}
+              >
+                <option value="" disabled hidden>Select gender</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Condition / Problem */}
+          <div className="mms-field">
+            <label>Condition/Problem <span style={{ color: "#d97706" }}>*</span></label>
+            <textarea
+              rows={2}
+              placeholder="Briefly describe the condition..."
+              value={form.conditionProblem}
+              onChange={(e) => set("conditionProblem", e.target.value)}
+            />
+          </div>
+
+          {/* Duration of Condition/Problem */}
+          <div className="mms-field">
+            <label>Duration of Condition/Problem <span style={{ color: "#d97706" }}>*</span></label>
+            <input
+              placeholder="e.g. 5 years, 6 months"
+              value={form.conditionDuration}
+              onChange={(e) => set("conditionDuration", e.target.value)}
+            />
+          </div>
+
+          {/* What could you not do before? */}
+          <div className="mms-field">
+            <label>What could you not do before? <span style={{ color: "#d97706" }}>*</span></label>
+            <textarea
+              rows={2}
+              placeholder="Describe limitations..."
+              value={form.unableToDoBefore}
+              onChange={(e) => set("unableToDoBefore", e.target.value)}
+            />
+          </div>
+
+          {/* What happened during the program? */}
+          <div className="mms-field">
+            <label>What happened during the program? <span style={{ color: "#d97706" }}>*</span></label>
+            <textarea
+              rows={3}
+              placeholder="Describe the miracle..."
+              value={form.whatHappenedDuringProgram}
+              onChange={(e) => set("whatHappenedDuringProgram", e.target.value)}
+            />
+          </div>
+
+          {/* What can you do now? */}
+          <div className="mms-field">
+            <label>What can you do now? <span style={{ color: "#d97706" }}>*</span></label>
+            <textarea
+              rows={2}
+              placeholder="Describe your current state..."
+              value={form.ableToDoNow}
+              onChange={(e) => set("ableToDoNow", e.target.value)}
+            />
+          </div>
+
+          {/* Person that invited you */}
+          <div className="mms-field">
+            <label>Name and Contact Details of the Person that invited you <span style={{ color: "#d97706" }}>*</span></label>
+            <input
+              placeholder="Details..."
+              value={form.inviterDetails}
+              onChange={(e) => set("inviterDetails", e.target.value)}
+            />
+          </div>
+
+          {/* Location of Healing Centre/Crusade */}
+          <div className="mms-field">
+            <label>Location of Healing Centre/Crusade <span style={{ color: "#d97706" }}>*</span></label>
+            <input
+              placeholder="e.g. Online, Center A"
+              value={form.healingCentreLocation}
+              onChange={(e) => set("healingCentreLocation", e.target.value)}
+            />
+          </div>
+
+          {/* Required Testimony Summary field BEFORE Medical Reports */}
+          <div className="mms-field" style={{ marginTop: '20px' }}>
+            <label>Your Testimony / Testimony Summary <span style={{ color: "#d97706" }}>*</span></label>
+            <textarea
+              rows={5}
+              placeholder="Write your testimony in your own words..."
+              value={form.description}
+              onChange={(e) => set("description", e.target.value)}
+              maxLength={2000}
+            />
+            <div className={`mms-char${form.description.length > 1800 ? " warn" : ""}`}>
+              {form.description.length} / 2000
+            </div>
+          </div>
+
+          {/* Medical Reports Upload (Required) */}
+          <div className="mms-field" style={{ marginTop: '22px', paddingTop: '16px', borderTop: '1px dashed var(--navy-border)' }}>
+            <label style={{ color: 'var(--gold-light)', fontSize: '11px', fontWeight: '700' }}>
+              Medical Reports <span style={{ color: "#d97706" }}>*</span>
+            </label>
+            <p style={{ fontSize: '11px', color: 'var(--cream-muted)', marginBottom: '8px' }}>
+              Separate upload for documents and pictures of the medical report
+            </p>
+            <div className="mms-upload-box-small">
               <input
                 type="file"
-                accept=".csv"
-                onChange={handleCsvUpload}
-                disabled={submitting}
+                multiple
+                accept="image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                onChange={(e) => addMedicalFiles(e.target.files)}
               />
-              <Icon.Csv />
-              <h4>Select or drop CSV file</h4>
-              <p>Filename must end with .csv</p>
+              <Icon.Plus />
+              <h5>Upload Medical Reports & Documents</h5>
+              <p>Images, PDFs, Word documents (Multiple allowed)</p>
             </div>
-
-            <div style={{ marginTop: "20px", fontSize: "13px", color: "var(--muted)" }}>
-              <h4 style={{ color: "var(--text)", marginBottom: "8px" }}>CSV Format Template</h4>
-              <p>The CSV must have the following header columns:</p>
-              <code style={{ display: "block", background: "var(--bg-card-hover)", padding: "10px", borderRadius: "8px", marginTop: "5px", color: "var(--gold)", overflowX: "auto" }}>
-                title,description,category,country
-              </code>
-              <button
-                type="button"
-                className="mms-btn-secondary"
-                style={{ marginTop: "12px", padding: "6px 12px", fontSize: "12px" }}
-                onClick={downloadCsvTemplate}
-              >
-                Download CSV Template
-              </button>
-            </div>
-
-            {parsedStories.length > 0 && (
-              <div style={{ marginTop: "25px" }}>
-                <h4 style={{ marginBottom: "10px", color: "var(--text)" }}>Parsed Testimonies ({parsedStories.length})</h4>
-                <div style={{ maxHeight: "200px", overflowY: "auto", border: "1px solid var(--border)", borderRadius: "8px" }}>
-                  {parsedStories.map((item, idx) => (
-                    <div key={idx} style={{ padding: "10px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <div>
-                        <div style={{ fontWeight: "600", fontSize: "14px", color: "var(--text)" }}>{item.title}</div>
-                        <div style={{ fontSize: "12px", color: "var(--muted)" }}>Category: {item.categoryName} | {item.country}</div>
-                      </div>
-                      <span style={{ color: "var(--gold)", fontWeight: "600", fontSize: "12px" }}>✓ Ready</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {submitting && (
-              <div style={{ marginTop: "20px" }}>
-                <p style={{ fontSize: "14px", fontWeight: "600", marginBottom: "8px" }}>Importing Testimonies: {progress}%</p>
-                <div className="mms-progress-bar">
-                  <div className="mms-progress-fill" style={{ width: `${progress}%` }} />
-                </div>
+            {medicalFiles.length > 0 && (
+              <div className="mms-file-chips">
+                {medicalFiles.map((f, i) => (
+                  <div key={i} className="mms-file-chip">
+                    <span>📄 {f.file.name}</span>
+                    <button type="button" className="mms-file-chip-remove" onClick={() => removeMedicalFile(i)}>×</button>
+                  </div>
+                ))}
               </div>
             )}
           </div>
-        ) : (
-          <div className="mms-card">
-            <span className="mms-step-eyebrow">Step 2 of {steps.length}</span>
-            <h2>Tell Your Story</h2>
-            <p className="mms-card-sub">Write in your own words — God moves through testimony.</p>
 
-            {/* Format context pill */}
-            {fmt && (
-              <div className="mms-format-pill">
-                <fmt.Icon /> {fmt.label}
-              </div>
-            )}
-
-            {error && <div className="mms-error">{error}</div>}
-
-            <div className="mms-row">
+          {/* Before & After Pictures Upload (Required) */}
+          <div className="mms-field" style={{ marginTop: '22px', paddingTop: '16px', borderTop: '1px dashed var(--navy-border)' }}>
+            <label style={{ color: 'var(--gold-light)', fontSize: '11px', fontWeight: '700' }}>
+              Before & After Pictures <span style={{ color: "#d97706" }}>*</span>
+            </label>
+            <p style={{ fontSize: '11px', color: 'var(--cream-muted)', marginBottom: '10px' }}>
+              Upload pictures for before and after (side by side, multiple images supported)
+            </p>
+            <div className="mms-before-after-grid">
+              
+              {/* Before Pictures Column */}
               <div className="mms-field">
-                <label>Name</label>
-                <input placeholder="e.g. John Doe" value={form.fullName} onChange={(e) => set("fullName", e.target.value)} />
-              </div>
-              <div className="mms-field">
-                <label>Zone</label>
-                <input placeholder="e.g. Zone 1" value={form.zone} onChange={(e) => set("zone", e.target.value)} />
-              </div>
-            </div>
-
-            <div className="mms-field">
-              <label>Testimony Title <span style={{ color: "#d97706" }}>*</span></label>
-              <input
-                placeholder="e.g. God restored my health in three days"
-                value={form.title}
-                onChange={(e) => set("title", e.target.value)}
-              />
-            </div>
-
-            <div className="mms-field">
-              <label>Category <span style={{ color: "#d97706" }}>*</span></label>
-              <select
-                value={form.categoryId}
-                onChange={(e) => set("categoryId", e.target.value)}
-              >
-                <option value="">Select a category</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="mms-row">
-              <div className="mms-field">
-                <label>Country</label>
-                <input placeholder="Nigeria" value={form.country} onChange={(e) => set("country", e.target.value)} />
-              </div>
-              <div className="mms-field">
-                <label>State</label>
-                <input placeholder="e.g. Lagos" value={form.state} onChange={(e) => set("state", e.target.value)} />
-              </div>
-            </div>
-
-            <div className="mms-field">
-              <label>City</label>
-              <input placeholder="e.g. Ikeja" value={form.city} onChange={(e) => set("city", e.target.value)} />
-            </div>
-
-            <div className="mms-field">
-              <label>Telephone Number (include country code)</label>
-              <input placeholder="+234..." value={form.telephoneNumber} onChange={(e) => set("telephoneNumber", e.target.value)} />
-            </div>
-
-            <div className="mms-row">
-              <div className="mms-field">
-                <label>Age</label>
-                <input type="number" placeholder="e.g. 35" value={form.age} onChange={(e) => set("age", e.target.value)} />
-              </div>
-              <div className="mms-field">
-                <label>Gender</label>
-                <select value={form.gender} onChange={(e) => set("gender", e.target.value)}>
-                  <option value="">Select Gender</option>
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="mms-field">
-              <label>Condition/Problem</label>
-              <textarea rows={2} placeholder="Briefly describe the condition..." value={form.conditionProblem} onChange={(e) => set("conditionProblem", e.target.value)} />
-            </div>
-
-            <div className="mms-field">
-              <label>Duration of Condition/Problem</label>
-              <input placeholder="e.g. 5 years, 6 months" value={form.conditionDuration} onChange={(e) => set("conditionDuration", e.target.value)} />
-            </div>
-
-            <div className="mms-field">
-              <label>What could you not do before?</label>
-              <textarea rows={2} placeholder="Describe limitations..." value={form.unableToDoBefore} onChange={(e) => set("unableToDoBefore", e.target.value)} />
-            </div>
-
-            <div className="mms-field">
-              <label>What happened during the program?</label>
-              <textarea rows={3} placeholder="Describe the miracle..." value={form.whatHappenedDuringProgram} onChange={(e) => set("whatHappenedDuringProgram", e.target.value)} />
-            </div>
-
-            <div className="mms-field">
-              <label>What can you do now?</label>
-              <textarea rows={2} placeholder="Describe your current state..." value={form.ableToDoNow} onChange={(e) => set("ableToDoNow", e.target.value)} />
-            </div>
-
-            <div className="mms-field">
-                <label>Name and Contact Details of the Person that invited you or Next of Kin/Guardian</label>
-              <input placeholder="Details..." value={form.inviterOrNextOfKinDetails} onChange={(e) => set("inviterOrNextOfKinDetails", e.target.value)} />
-            </div>
-
-            <div className="mms-field">
-              <label>Location of Healing Centre/Crusade</label>
-              <input placeholder="e.g. Online, Center A" value={form.healingCentreLocation} onChange={(e) => set("healingCentreLocation", e.target.value)} />
-            </div>
-
-
-
-            <div className="mms-field">
-              <label>Your Testimony {isText ? "" : "(Optional)"}</label>
-              <textarea
-                rows={7}
-                placeholder="Share what happened in your own words…"
-                value={form.description}
-                onChange={(e) => set("description", e.target.value)}
-                maxLength={2000}
-              />
-              <div className={`mms-char${form.description.length > 1800 ? " warn" : ""}`}>
-                {form.description.length} / 2000
-              </div>
-            </div>
-
-            {/* Embedded Media Section */}
-            <div className="mms-embedded-media-section" style={{
-              marginTop: "24px",
-              paddingTop: "20px",
-              borderTop: "1.5px dashed var(--navy-border)"
-            }}>
-              {!isText && (
-                <div style={{ marginBottom: "24px" }}>
-                  <label style={{
-                    display: "block",
-                    fontSize: "10px",
-                    fontWeight: "600",
-                    letterSpacing: "0.12em",
-                    textTransform: "uppercase",
-                    color: "var(--gold)",
-                    marginBottom: "12px"
-                  }}>
-                    {format?.id === "record-video" && "Record Your Video Testimony (Required)"}
-                    {format?.id === "record-audio" && "Record Your Audio Testimony (Required)"}
-                    {format?.id === "upload" && "Upload Video File (Required)"}
-                  </label>
-
-                  {videoRec.error && (
-                    <div className="mms-error" style={{ whiteSpace: "pre-line", textAlign: "left", marginBottom: "16px" }}>
-                      {videoRec.error}
-                    </div>
-                  )}
-                  {audioRec.error && (
-                    <div className="mms-error" style={{ whiteSpace: "pre-line", textAlign: "left", marginBottom: "16px" }}>
-                      {audioRec.error}
-                    </div>
-                  )}
-
-                  {format?.id === "record-video" && (
-                    <div className="mms-record-area">
-                      {videoRec.recState !== "done" && (
-                        <video
-                          ref={videoRec.mediaRef}
-                          muted
-                          playsInline
-                          className="mms-cam-preview"
-                          style={{ display: (videoRec.recState === "ready" || videoRec.recState === "recording") ? "block" : "none" }}
-                        />
-                      )}
-                      {videoRec.recState === "done" && videoRec.blobUrl && (
-                        <>
-                          <div className="mms-playback">
-                            <video src={videoRec.blobUrl} controls />
-                          </div>
-                          <button className="mms-redo-btn" onClick={videoRec.reset}>↺  Record Again</button>
-                        </>
-                      )}
-
-                      {videoRec.recState !== "done" && (
-                        <>
-                          <Waveform bars={videoRec.bars} live={videoRec.recState === "recording"} />
-                          <div className={`mms-rec-timer${videoRec.recState === "recording" ? " live" : ""}`}>
-                            {videoRec.fmt(videoRec.elapsed)}
-                          </div>
-                          <div className="mms-rec-btn-wrap">
-                            <button
-                              className={`mms-rec-btn${videoRec.recState === "recording" ? " live" : ""}`}
-                              onClick={videoRec.recState === "recording" ? videoRec.stop : videoRec.start}
-                              aria-label={videoRec.recState === "recording" ? "Stop recording" : "Start recording"}
-                            >
-                              <div className="mms-rec-dot" />
-                            </button>
-                            <span className="mms-rec-hint">
-                              {videoRec.recState === "idle" || videoRec.recState === "ready"
-                                ? "Tap to start recording"
-                                : "Tap to stop recording"}
-                            </span>
-                          </div>
-                          {(videoRec.recState === "idle" && !videoRec.error) && (
-                            <p className="mms-perm-tip">
-                              Your browser will request camera and microphone permission — please allow it to continue.
-                            </p>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  )}
-
-                  {format?.id === "record-audio" && (
-                    <div className="mms-record-area">
-                      {audioRec.recState === "done" && audioRec.blobUrl ? (
-                        <>
-                          <div className="mms-playback">
-                            <audio src={audioRec.blobUrl} controls />
-                          </div>
-                          <button className="mms-redo-btn" onClick={audioRec.reset}>↺  Record Again</button>
-                        </>
-                      ) : (
-                        <>
-                          <Waveform bars={audioRec.bars} live={audioRec.recState === "recording"} />
-                          <div className={`mms-rec-timer${audioRec.recState === "recording" ? " live" : ""}`}>
-                            {audioRec.fmt(audioRec.elapsed)}
-                          </div>
-                          <div className="mms-rec-btn-wrap">
-                            <button
-                              className={`mms-rec-btn${audioRec.recState === "recording" ? " live" : ""}`}
-                              onClick={audioRec.recState === "recording" ? audioRec.stop : audioRec.start}
-                              aria-label={audioRec.recState === "recording" ? "Stop recording" : "Start recording"}
-                            >
-                              <div className="mms-rec-dot" />
-                            </button>
-                            <span className="mms-rec-hint">
-                              {audioRec.recState === "idle" || audioRec.recState === "ready"
-                                ? "Tap to start recording"
-                                : "Tap to stop recording"}
-                            </span>
-                          </div>
-                          {(audioRec.recState === "idle" && !audioRec.error) && (
-                            <p className="mms-perm-tip">
-                              Your browser will request microphone permission — please allow it to continue.
-                            </p>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  )}
-                  
-                  {format?.id === "upload" && (
-                    <div
-                      className={`mms-upload-box${dragOver ? " over" : ""}`}
-                      onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-                      onDragLeave={() => setDragOver(false)}
-                      onDrop={(e) => { e.preventDefault(); setDragOver(false); addFiles(e.dataTransfer.files); }}
-                    >
-                      <input
-                        type="file"
-                        multiple
-                        accept="video/*"
-                        onChange={(e) => addFiles(e.target.files)}
-                      />
-                      <Icon.Upload />
-                      <h4>Drop your testimony video here</h4>
-                      <p>MP4, WebM · Max 50 MB</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Medical Reports & Pictures */}
-              <div>
-                <label style={{
-                  display: "block",
-                  fontSize: "10px",
-                  fontWeight: "600",
-                  letterSpacing: "0.12em",
-                  textTransform: "uppercase",
-                  color: "var(--gold)",
-                  marginBottom: "12px"
-                }}>
-                  Medical Reports & Before/After Pictures (Optional)
-                </label>
-                <div
-                  className={`mms-upload-box${dragOver ? " over" : ""}`}
-                  style={{ padding: "20px 15px", minHeight: "100px", borderStyle: "dashed" }}
-                  onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-                  onDragLeave={() => setDragOver(false)}
-                  onDrop={(e) => { e.preventDefault(); setDragOver(false); addFiles(e.dataTransfer.files); }}
-                >
+                <label style={{ fontSize: '10px', color: 'var(--cream)' }}>Before Picture(s) <span style={{ color: "#d97706" }}>*</span></label>
+                <div className="mms-upload-box-small">
                   <input
                     type="file"
                     multiple
-                    accept="image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                    onChange={(e) => addFiles(e.target.files)}
+                    accept="image/*"
+                    onChange={(e) => addBeforeFiles(e.target.files)}
                   />
-                  <Icon.Plus />
-                  <h4>Add Pictures or Medical Reports</h4>
-                  <p>Images, PDFs, Docs</p>
+                  <Icon.Upload />
+                  <h5>Add Before Picture(s)</h5>
+                  <p>Multiple images before healing</p>
                 </div>
+                {beforeFiles.length > 0 && (
+                  <div className="mms-file-chips">
+                    {beforeFiles.map((f, i) => (
+                      <div key={i} className="mms-file-chip">
+                        <img src={f.url} alt="Before" style={{ width: '22px', height: '22px', objectFit: 'cover', borderRadius: '4px' }} />
+                        <span>Before {i + 1}</span>
+                        <button type="button" className="mms-file-chip-remove" onClick={() => removeBeforeFile(i)}>×</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              {/* Shared Uploaded Files Preview */}
-              {uploadedFiles.length > 0 && (
-                <div className="mms-media-grid" style={{ marginTop: "16px" }}>
-                  {uploadedFiles.map((item, i) => (
-                    <div key={i} className="mms-media-thumb">
-                      {item.file.type.startsWith("image")
-                        ? <img src={item.url} alt="" />
-                        : item.file.type.startsWith("video")
-                        ? <video src={item.url} />
-                        : <div style={{width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', background:'#eee', color:'#555'}}><Icon.Text /></div>}
-                      <span className="mms-thumb-type">
-                        {item.file.type.startsWith("image") ? "IMG" : item.file.type.startsWith("video") ? "VID" : "DOC"}
-                      </span>
-                      <button className="mms-thumb-remove" onClick={() => removeFile(i)}>×</button>
-                    </div>
-                  ))}
+              {/* After Pictures Column */}
+              <div className="mms-field">
+                <label style={{ fontSize: '10px', color: 'var(--cream)' }}>After Picture(s) <span style={{ color: "#d97706" }}>*</span></label>
+                <div className="mms-upload-box-small">
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={(e) => addAfterFiles(e.target.files)}
+                  />
+                  <Icon.Upload />
+                  <h5>Add After Picture(s)</h5>
+                  <p>Multiple images after healing</p>
                 </div>
-              )}
+                {afterFiles.length > 0 && (
+                  <div className="mms-file-chips">
+                    {afterFiles.map((f, i) => (
+                      <div key={i} className="mms-file-chip">
+                        <img src={f.url} alt="After" style={{ width: '22px', height: '22px', objectFit: 'cover', borderRadius: '4px' }} />
+                        <span>After {i + 1}</span>
+                        <button type="button" className="mms-file-chip-remove" onClick={() => removeAfterFile(i)}>×</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        )
+
+        </div>
       )}
 
       {/* ══════════════════════════════════════════════
@@ -1193,49 +897,96 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
       ══════════════════════════════════════════════ */}
       {step === PREVIEW && (
         <div className="mms-card">
-          <span className="mms-step-eyebrow">Step {PREVIEW + 1} of {steps.length}</span>
+          <span className="mms-step-eyebrow">Step 3 of {steps.length}</span>
           <h2>Review Before Submitting</h2>
-          <p className="mms-card-sub">Make sure everything looks right.</p>
+          <p className="mms-card-sub">Make sure all testimony information is accurate.</p>
 
-          <div className="mms-preview-media">{previewMedia()}</div>
-
-          {selectedCategory && (
-            <div className="mms-preview-badge">✦ {selectedCategory.name}</div>
-          )}
-          <h2 className="mms-preview-title">{form.title}</h2>
-          <p className="mms-preview-story">{form.description}</p>
-
-          <div className="mms-preview-meta">
-            {form.country && (
-              <div className="mms-meta-pill"><Icon.Pin />{form.country}</div>
-            )}
-            {form.church && (
-              <div className="mms-meta-pill"><Icon.Church />{form.church}</div>
-            )}
-            {form.zone && (
-              <div className="mms-meta-pill"><Icon.Tag />{form.zone}</div>
-            )}
-            {fmt && (
-              <div className="mms-meta-pill"><fmt.Icon />{fmt.label}</div>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+            <span className="mms-preview-badge">Form: {form.fillerType}</span>
+            {selectedCategory && (
+              <span className="mms-preview-badge">✦ {selectedCategory.name}</span>
             )}
           </div>
+
+          <h2 className="mms-preview-title">{form.title}</h2>
+
+          <div style={{ background: 'var(--navy-input)', padding: '16px', borderRadius: '12px', marginBottom: '16px' }}>
+            {form.fillerType === "Zonal Manager" ? (
+              <>
+                <p><strong>Zone:</strong> {form.zone}</p>
+                <p><strong>Testifier:</strong> {form.testifierName}</p>
+              </>
+            ) : (
+              <p><strong>Name:</strong> {form.firstName} {form.lastName}</p>
+            )}
+            <p><strong>Location:</strong> {form.state}, {form.country} ({form.healingCentreLocation})</p>
+            <p><strong>Contact:</strong> {form.telephoneNumber} {form.email ? `| ${form.email}` : ''}</p>
+            <p><strong>Age / Gender:</strong> {form.age} yrs | {form.gender}</p>
+          </div>
+
+          <div style={{ marginBottom: '16px' }}>
+            <h4 style={{ color: 'var(--gold-light)', fontSize: '13px', marginBottom: '6px' }}>Condition / Miracle Details</h4>
+            <p className="mms-preview-story"><strong>Condition:</strong> {form.conditionProblem} ({form.conditionDuration})</p>
+            <p className="mms-preview-story"><strong>Unable to do before:</strong> {form.unableToDoBefore}</p>
+            <p className="mms-preview-story"><strong>What happened during program:</strong> {form.whatHappenedDuringProgram}</p>
+            <p className="mms-preview-story"><strong>Able to do now:</strong> {form.ableToDoNow}</p>
+            <p className="mms-preview-story"><strong>Invited by:</strong> {form.inviterDetails}</p>
+          </div>
+
+          {/* Medical reports attached preview */}
+          {medicalFiles.length > 0 && (
+            <div style={{ marginBottom: '16px' }}>
+              <h4 style={{ color: 'var(--gold-light)', fontSize: '12px', marginBottom: '6px' }}>Medical Reports ({medicalFiles.length})</h4>
+              <div className="mms-file-chips">
+                {medicalFiles.map((f, i) => (
+                  <div key={i} className="mms-file-chip">📄 {f.file.name}</div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Before & After Pictures Side by Side Preview */}
+          {(beforeFiles.length > 0 || afterFiles.length > 0) && (
+            <div style={{ marginBottom: '16px' }}>
+              <h4 style={{ color: 'var(--gold-light)', fontSize: '12px', marginBottom: '8px' }}>Before & After Comparison</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <span style={{ fontSize: '10px', display: 'block', color: 'var(--cream-muted)', marginBottom: '4px' }}>Before Healing</span>
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    {beforeFiles.map((f, i) => (
+                      <img key={i} src={f.url} alt="Before" style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '6px' }} />
+                    ))}
+                    {beforeFiles.length === 0 && <span style={{ fontSize: '11px', color: 'var(--navy-border)' }}>None uploaded</span>}
+                  </div>
+                </div>
+                <div>
+                  <span style={{ fontSize: '10px', display: 'block', color: 'var(--cream-muted)', marginBottom: '4px' }}>After Healing</span>
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    {afterFiles.map((f, i) => (
+                      <img key={i} src={f.url} alt="After" style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '6px' }} />
+                    ))}
+                    {afterFiles.length === 0 && <span style={{ fontSize: '11px', color: 'var(--navy-border)' }}>None uploaded</span>}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
         </div>
       )}
 
       {/* ══════════════════════════════════════════════
-          DONE
+          DONE STEP
       ══════════════════════════════════════════════ */}
       {step === DONE && (
         <div className="mms-card">
           <div className="mms-success">
             <div className="mms-success-halo">🙏</div>
-            <h2>{isBulk ? "Import Completed!" : "Testimony Submitted for Admin Approval"}</h2>
+            <h2>Testimony Submitted for Admin Approval</h2>
             <p>
-              {isBulk
-                ? `Successfully imported ${parsedStories.length} testimonies into the portal for admin approval.`
-                : "Your testimony has been successfully submitted and sent to the Admin for approval. Once approved, it will be published and visible on the website."}
+              Your testimony has been successfully submitted and sent to the Admin for approval. Once approved, it will be published and visible on the website.
             </p>
-            {!isBulk && testimonyId && (
+            {testimonyId && (
               <div className="mms-success-ref" style={{ margin: "16px 0", padding: "10px", background: "rgba(217, 119, 6, 0.1)", borderRadius: "8px", border: "1px solid rgba(217, 119, 6, 0.3)" }}>
                 Status: <strong style={{ color: "#d97706" }}>PENDING ADMIN APPROVAL</strong> | Reference ID: <strong>#{testimonyId}</strong>
               </div>
@@ -1252,27 +1003,39 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
                 className="mms-btn-secondary"
                 onClick={() => {
                   setStep(0);
-                  setFormat(null);
                   setTestimonyId(null);
                   setForm({
-                    title: "", categoryId: "", country: "", description: "",
-                    state: "", city: "", fullName: "", telephoneNumber: "", age: "", gender: "",
-                    conditionProblem: "", conditionDuration: "", unableToDoBefore: "",
-                    whatHappenedDuringProgram: "", ableToDoNow: "", inviterOrNextOfKinDetails: "",
-                    healingCentreLocation: "", zone: "",
+                    fillerType: "",
+                    fillerOther: "",
+                    firstName: "",
+                    lastName: "",
+                    testifierName: "",
+                    zone: "",
+                    title: "",
+                    categoryId: "",
+                    country: "",
+                    state: "",
+                    city: "",
+                    telephoneNumber: "",
+                    email: "",
+                    age: "",
+                    gender: "",
+                    conditionProblem: "",
+                    conditionDuration: "",
+                    unableToDoBefore: "",
+                    whatHappenedDuringProgram: "",
+                    ableToDoNow: "",
+                    inviterDetails: "",
+                    healingCentreLocation: "",
+                    description: "",
                   });
-                  setUploadedFiles([]);
+                  setMedicalFiles([]);
+                  setBeforeFiles([]);
+                  setAfterFiles([]);
                 }}
                 style={{ padding: "10px 20px", fontSize: "14px" }}
               >
                 Submit Another Testimony
-              </button>
-              <button
-                className="mms-btn-secondary"
-                onClick={() => navigate("/")}
-                style={{ padding: "10px 20px", fontSize: "14px" }}
-              >
-                Return to Home
               </button>
             </div>
           </div>
@@ -1291,64 +1054,37 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
             </button>
           )}
 
-          {/* Format → Story */}
-          {step === S.FORMAT && (
+          {step === S.ROLE && (
             <button
               className="mms-btn-primary"
               onClick={() => {
-                if (!form.fillerType) {
-                  setError("Please select who is filling the form before continuing.");
-                  return;
+                if (validateRoleForm()) {
+                  setError(null);
+                  setStep(S.STORY);
                 }
-                if (form.fillerType === "Other" && !form.fillerOther.trim()) {
-                  setError("Please state your name or department.");
-                  return;
-                }
-                setError(null);
-                setStep(S.STORY);
               }}
-              disabled={!format || !form.fillerType || (form.fillerType === "Other" && !form.fillerOther.trim())}
+              disabled={!form.fillerType || (form.fillerType === "Other" && !form.fillerOther.trim())}
             >
               Continue →
             </button>
           )}
 
-          {/* Story → API → next */}
           {step === S.STORY && (
-            isBulk ? (
-              <button
-                className="mms-btn-primary"
-                onClick={handleBulkSubmit}
-                disabled={parsedStories.length === 0 || submitting}
-              >
-                {submitting
-                  ? <><span className="mms-spinner" /> Importing…</>
-                  : <>Import Testimonies →</>}
-              </button>
-            ) : (
-              <button
-                className="mms-btn-primary"
-                onClick={handleSubmitStory}
-                disabled={submitting}
-              >
-                {submitting
-                  ? <><span className="mms-spinner" /> Saving…</>
-                  : <>Continue →</>}
-              </button>
-            )
+            <button
+              className="mms-btn-primary"
+              onClick={handleSubmitStory}
+              disabled={submitting}
+            >
+              {submitting
+                ? <><span className="mms-spinner" /> Saving…</>
+                : <>Continue to Preview →</>}
+            </button>
           )}
 
-
-
-          {/* Preview → Submit */}
           {step === PREVIEW && (
             <button
               className="mms-btn-primary"
-              onClick={
-                isText
-                  ? () => { setStep(DONE); onSuccess?.({ ...form }); }
-                  : handleFinalSubmit
-              }
+              onClick={handleFinalSubmit}
               disabled={submitting}
             >
               {submitting

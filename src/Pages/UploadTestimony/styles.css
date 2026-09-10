@@ -308,13 +308,15 @@
 }
 .mms-field input::placeholder,
 .mms-field textarea::placeholder { color: var(--navy-border); }
+.mms-field select.is-placeholder { color: var(--navy-border); }
+.mms-field select input::placeholder { color: var(--navy-border); }
 .mms-field input:focus,
 .mms-field textarea:focus,
 .mms-field select:focus {
   border-color: var(--gold);
   box-shadow: 0 0 0 3px var(--gold-glow);
 }
-.mms-field select option { background: var(--navy-card); }
+.mms-field select option { background: var(--navy-card); color: var(--cream); }
 .mms-field textarea { resize: none; line-height: 1.65; }
 
 .mms-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -759,6 +761,79 @@
   border-radius: 4px;
   transition: width 0.3s ease;
 }
+.mms-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+
+/* ─── Before / After & Upload Box Small ────────────────────────────────────── */
+.mms-before-after-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.mms-upload-box-small {
+  border: 1.5px dashed var(--navy-border);
+  border-radius: 12px;
+  padding: 16px 12px;
+  text-align: center;
+  cursor: pointer;
+  position: relative;
+  background: var(--navy-input);
+  transition: border-color var(--t) var(--ease), background var(--t) var(--ease);
+}
+.mms-upload-box-small:hover {
+  border-color: var(--gold);
+  background: var(--gold-glow);
+}
+.mms-upload-box-small input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.mms-upload-box-small svg {
+  width: 22px;
+  height: 22px;
+  color: var(--gold);
+  margin-bottom: 6px;
+}
+.mms-upload-box-small h5 {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--white);
+  margin-bottom: 2px;
+}
+.mms-upload-box-small p {
+  font-size: 10px;
+  color: var(--cream-muted);
+}
+
+.mms-file-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.mms-file-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #112240;
+  border: 1px solid var(--navy-border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 11px;
+  color: var(--cream);
+}
+.mms-file-chip-remove {
+  background: none;
+  border: none;
+  color: var(--red);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  margin-left: 4px;
+}
 
 /* ─── Responsiveness Media Queries ────────────────────────────────────────── */
 @media (max-width: 480px) {
@@ -771,9 +846,13 @@
   .mms-format-grid {
     grid-template-columns: 1fr;
   }
-  .mms-row {
+  .mms-row,
+  .mms-row-3 {
     grid-template-columns: 1fr;
     gap: 14px;
+  }
+  .mms-before-after-grid {
+    grid-template-columns: 1fr;
   }
   .mms-step-label {
     font-size: 7.5px;
