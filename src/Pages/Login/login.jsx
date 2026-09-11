@@ -15,28 +15,62 @@ export default function Login() {
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
     const session = searchParams.get("session");
-    if (session) {
-      setKingschatLoading(true);
+    const kcError = searchParams.get("kc_error");
+
+    // Always clean the URL
+    if (session || kcError) {
       window.history.replaceState({}, document.title, window.location.pathname);
-      
-      api.get(`/api/auth/kingschat/poll/${session}`)
-        .then(res => {
-          if (res.status === 200 && res.data && res.data.token) {
-            localStorage.setItem("token", res.data.token);
-            localStorage.setItem("user", JSON.stringify(res.data.user));
-            if (res.data.user && res.data.user.role === "ADMIN") {
-              navigate("/admin");
-            } else {
-              navigate("/profile");
-            }
-          }
-        })
-        .catch(err => {
-          setError(err.response?.data?.message || "KingsChat login failed on the server.");
-          setKingschatLoading(false);
-        });
     }
+
+    if (kcError) {
+      setError("KingsChat authentication failed. Please try again.");
+      return;
+    }
+
+    if (!session) return;
+
+    setKingschatLoading(true);
+
+    // Retry loop — poll up to 10 times with 1s gaps to handle the race
+    // condition where the backend session is still being written when we arrive.
+    let attempts = 0;
+    const MAX_ATTEMPTS = 10;
+
+    const poll = async () => {
+      attempts++;
+      try {
+        const res = await api.get(`/api/auth/kingschat/poll/${session}`);
+        if (res.status === 200 && res.data && res.data.token) {
+          localStorage.setItem("token", res.data.token);
+          localStorage.setItem("user", JSON.stringify(res.data.user));
+          if (res.data.user && res.data.user.role === "ADMIN") {
+            navigate("/admin");
+          } else {
+            navigate("/profile");
+          }
+          return; // success — stop polling
+        }
+        // 202 = session not ready yet, keep retrying
+        if (attempts < MAX_ATTEMPTS) {
+          setTimeout(poll, 1000);
+        } else {
+          setError("KingsChat login timed out. Please try again.");
+          setKingschatLoading(false);
+        }
+      } catch (err) {
+        if (attempts < MAX_ATTEMPTS) {
+          setTimeout(poll, 1000);
+        } else {
+          setError(err.response?.data?.message || "KingsChat login failed. Please try again.");
+          setKingschatLoading(false);
+        }
+      }
+    };
+
+    poll();
   }, [navigate]);
+
+
 
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
 
@@ -93,6 +127,31 @@ export default function Login() {
   return (
     <div className="login-page">
       <div className="auth-card">
+
+        {/* Full-card loading overlay while KingsChat session resolves */}
+        {kingschatLoading && (
+          <div style={{
+            position: 'absolute', inset: 0, borderRadius: '24px',
+            background: 'rgba(10,10,22,0.92)', backdropFilter: 'blur(8px)',
+            display: 'flex', flexDirection: 'column', alignItems: 'center',
+            justifyContent: 'center', gap: '18px', zIndex: 10,
+          }}>
+            <div style={{
+              width: '52px', height: '52px', borderRadius: '50%',
+              border: '3px solid rgba(201,169,110,0.2)',
+              borderTopColor: '#c9a96e',
+              animation: 'kcSpin 0.8s linear infinite',
+            }} />
+            <p style={{ color: '#f0ecf8', fontWeight: 700, fontSize: '15px', margin: 0 }}>
+              Signing you in with KingsChat...
+            </p>
+            <p style={{ color: '#9a95a8', fontSize: '12px', margin: 0 }}>
+              Please wait a moment
+            </p>
+            <style>{`@keyframes kcSpin { to { transform: rotate(360deg); } }`}</style>
+          </div>
+        )}
+
         <div className="auth-logo">
           <span className="logo-icon">✨</span>
           <h2>My Miracle Story</h2>
@@ -101,6 +160,7 @@ export default function Login() {
         <p className="auth-sub">Sign in to your account</p>
 
         {error && <div className="auth-error">{error}</div>}
+
 
         <div className="auth-buttons-stack" style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '20px' }}>
           <button

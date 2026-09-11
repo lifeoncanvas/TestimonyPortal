@@ -1,6 +1,4 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router";
-import { useEffect } from "react";
-import api from "./services/axiosConfig";
 import './App.css';
 
 import Homepage from "./Pages/Homepage/homepage";
@@ -43,33 +41,6 @@ function ProtectedRoute({ children, requireAdmin = false }) {
 
 
 function App() {
-  useEffect(() => {
-    const searchParams = new URLSearchParams(window.location.search);
-    const code = searchParams.get("code");
-    const origin = searchParams.get("origin");
-
-    if (code && origin) {
-      window.history.replaceState({}, document.title, window.location.pathname);
-      
-      api.post("/api/auth/kingschat/verify", { code })
-        .then(res => {
-          localStorage.setItem("token", res.data.token);
-          localStorage.setItem("user", JSON.stringify(res.data.user));
-          
-          const user = res.data.user;
-          if (user && user.role === "ADMIN") {
-            window.location.href = "/admin";
-          } else {
-            window.location.href = "/profile";
-          }
-        })
-        .catch(err => {
-          console.error("Kingschat verification failed", err);
-          alert("KingsChat login failed: " + (err.response?.data?.message || err.message));
-        });
-    }
-  }, []);
-
   return (
     <BrowserRouter>
 
