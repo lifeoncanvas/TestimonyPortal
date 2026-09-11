@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/axiosConfig';
-import './login.css'; // Reusing login styles
+import './styles.css'; // Reusing login styles
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
