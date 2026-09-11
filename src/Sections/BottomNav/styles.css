@@ -1,33 +1,80 @@
 .bottom-nav{
   position:fixed;
-  bottom:20px;
+  bottom:24px;
   left:50%;
   transform:translateX(-50%);
-
   background:#111;
-
-  padding:10px;
+  padding:12px 24px;
   border-radius:999px;
-
   display:flex;
-  gap:px;
-
+  align-items: center;
+  gap: 24px;
   z-index:100;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
-
-
 
 .bottom-nav button{
   border:none;
   background:none;
-  color:white;
-  font-size:18px;
+  color:#b8a990;
+  font-size:20px;
+  cursor: pointer;
+  transition: transform 0.2s ease, color 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bottom-nav button:hover {
+  color: #e8c97a;
+  transform: translateY(-2px);
 }
 
 .center-btn{
   width:48px;
   height:48px;
   border-radius:50%;
-  background:#d9b88f !important;
+  background:#c9973a !important;
+  color: #080f1e !important;
+  font-size: 26px !important;
+  box-shadow: 0 4px 16px rgba(201, 151, 58, 0.3);
 }
 
+.center-btn:hover {
+  transform: scale(1.05) translateY(-2px);
+  background: #e8c97a !important;
+}
+
+/* ─── Laptop Breakpoint ─── */
+@media (min-width: 768px) {
+  .bottom-nav {
+    padding: 16px 40px;
+    gap: 48px;
+    bottom: 32px;
+  }
+  .bottom-nav button {
+    font-size: 28px;
+  }
+  .center-btn {
+    width: 64px;
+    height: 64px;
+    font-size: 36px !important;
+  }
+}
+
+/* ─── Desktop Breakpoint ─── */
+@media (min-width: 1024px) {
+  .bottom-nav {
+    padding: 20px 64px;
+    gap: 80px;
+    bottom: 40px;
+  }
+  .bottom-nav button {
+    font-size: 34px;
+  }
+  .center-btn {
+    width: 80px;
+    height: 80px;
+    font-size: 42px !important;
+  }
+}

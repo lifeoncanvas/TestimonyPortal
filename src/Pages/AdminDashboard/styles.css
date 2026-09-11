@@ -326,13 +326,26 @@
   color: #d4ccef;
 }
 
-/* ── Desktop ── */
+/* ── Desktop & Laptop Breakpoints ── */
 @media (min-width: 768px) {
   .admin-page {
-    max-width: 860px;
-    margin: 0 auto;
+    /* Full width background */
+    width: 100%;
     padding-bottom: 48px;
   }
+  
+  /* Center the content sections */
+  .admin-stats-grid, 
+  .admin-actions, 
+  .admin-recent {
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  .admin-topbar {
+    padding: 16px 5%;
+  }
+
   .admin-stats-grid {
     grid-template-columns: repeat(4, 1fr);
     gap: 16px;
@@ -343,6 +356,49 @@
     flex-direction: row;
   }
   .admin-action-card { flex: 1; }
+}
+
+@media (min-width: 1024px) {
+  .admin-stats-grid, 
+  .admin-actions, 
+  .admin-recent {
+    max-width: 1200px;
+  }
+
+  .admin-topbar {
+    padding: 16px 8%;
+  }
+  
+  .admin-stats-grid {
+    gap: 24px;
+    padding: 36px 36px 24px;
+  }
+  
+  .admin-actions, .admin-recent { padding: 0 36px 32px; }
+  
+  .admin-stat-card {
+    padding: 24px 20px;
+  }
+  
+  .admin-stat-value {
+    font-size: 28px;
+  }
+  
+  .admin-stat-label {
+    font-size: 13px;
+  }
+  
+  .admin-action-card {
+    padding: 20px;
+  }
+  
+  .admin-action-card h3 {
+    font-size: 16px;
+  }
+  
+  .admin-action-card p {
+    font-size: 13px;
+  }
 }
 
 /* ── Modal Overlay ── */
