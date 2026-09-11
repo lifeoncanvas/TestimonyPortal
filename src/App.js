@@ -9,7 +9,8 @@ import TestimonyDetails from "./Pages/TestimonyDetails/testimonyDetails";
 import UploadTestimony from "./Pages/UploadTestimony/uploadTestimony";
 import Login from "./Pages/Login/login";
 import Register from "./Pages/Register/register";
-import ForgotPassword from "./Pages/ForgotPassword/ForgotPassword";
+import ForgotPassword from "./Pages/Login/forgotPassword";
+import ResetPassword from "./Pages/Login/resetPassword";
 import Profile from "./Pages/Profile/profile";
 import MyTestimonies from "./Pages/MyTestimonies/myTestimonies";
 import SavedTestimonies from "./Pages/SavedTestimonies/savedTestimonies";
@@ -74,6 +75,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path="/my-testimonies" element={<ProtectedRoute><MyTestimonies /></ProtectedRoute>} />
         <Route path="/saved" element={<ProtectedRoute><SavedTestimonies /></ProtectedRoute>} />
