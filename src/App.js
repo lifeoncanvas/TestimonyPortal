@@ -85,7 +85,7 @@ function App() {
         <Route path="/admin/moderation" element={<ProtectedRoute requireAdmin={true}><AdminModeration /></ProtectedRoute>} />
         <Route path="/admin/categories" element={<ProtectedRoute requireAdmin={true}><AdminCategories /></ProtectedRoute>} />
         <Route path="/admin/users" element={<ProtectedRoute requireAdmin={true}><AdminUsers /></ProtectedRoute>} />
-        <Route path="/prayers" element={<PrayerWall />} />
+        <Route path="/prayers" element={<ProtectedRoute requireAdmin={true}><PrayerWall /></ProtectedRoute>} />
       </Routes>
     </BrowserRouter>
   );

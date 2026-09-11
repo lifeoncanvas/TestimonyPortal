@@ -4,7 +4,7 @@ import {
   ChevronLeft, CheckCircle, XCircle, Clock, Eye,
   ChevronDown, ChevronUp, Star, TrendingUp, Shield, Trash2,
   Play, Pause, X, User, MapPin, FileText, MessageSquare,
-  Send, Volume2, Video, Image as ImageIcon,
+  Send, Volume2, Video, Image as ImageIcon, Download,
 } from "lucide-react";
 import api from "../../services/axiosConfig";
 import "./styles.css";
@@ -319,6 +319,11 @@ function DetailPanel({ testimony, onClose, onAction, apiBase }) {
 
         {/* ── Sticky Action Bar ── */}
         <div className="mod-detail-actions-bar">
+          {statusLower === "approved" && (
+            <button className="mod-btn" onClick={() => onAction("download", t.id)} style={{ background: "rgba(46, 204, 113, 0.1)", color: "#27ae60", border: "1px solid rgba(46, 204, 113, 0.2)" }}>
+              <Download size={15} /> Download
+            </button>
+          )}
           {statusLower !== "approved" && (
             <button className="mod-btn approve" onClick={() => onAction("approve", t.id)}>
               <CheckCircle size={15} /> Approve
@@ -487,6 +492,22 @@ export default function AdminModeration() {
     }
   };
 
+  const handleDownload = async (id) => {
+    try {
+      const res = await api.get(`/api/admin/testimonies/${id}/download`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `testimony_${id}.txt`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+      showToast("Download started!");
+    } catch (err) {
+      showToast("Download failed", "error");
+    }
+  };
+
   const handleDetailAction = (action, id) => {
     switch (action) {
       case "approve": handleApprove(id); break;
@@ -494,6 +515,7 @@ export default function AdminModeration() {
       case "feature": handleToggleFeatured(id); break;
       case "trend": handleToggleTrending(id); break;
       case "delete": handleDelete(id); break;
+      case "download": handleDownload(id); break;
       default: break;
     }
   };
@@ -609,6 +631,11 @@ export default function AdminModeration() {
                     <button className="mod-btn review" onClick={() => openDetail(t.id)}>
                       <Eye size={13} /> Review Full Details
                     </button>
+                    {statusLower === "approved" && (
+                      <button className="mod-btn" onClick={() => handleDownload(t.id)} style={{ background: "rgba(46, 204, 113, 0.1)", color: "#27ae60", border: "1px solid rgba(46, 204, 113, 0.2)" }}>
+                        <Download size={13} /> Download
+                      </button>
+                    )}
                     {statusLower !== "approved" && (
                       <button className="mod-btn approve" onClick={() => handleApprove(t.id)}>
                         <CheckCircle size={13} /> Approve
