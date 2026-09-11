@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/axiosConfig';
-import './styles.css'; // Reusing login styles
+import './styles.css';
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
@@ -29,33 +29,43 @@ const ForgotPassword = () => {
   };
 
   return (
-    <div className="login-container">
-      <div className="login-box">
-        <h2 className="login-title">Forgot Password</h2>
-        <p className="login-subtitle">Enter your email to receive a reset link</p>
+    <div className="login-page">
+      <div className="auth-card">
+        <div className="auth-logo">
+          <span className="logo-icon">✨</span>
+          <h2>My Miracle Story</h2>
+        </div>
+        <h1>Forgot Password</h1>
+        <p className="auth-sub">Enter your email to receive a reset link</p>
         
-        {message && <div className="alert-success" style={{color: '#28a745', marginBottom: '15px'}}>{message}</div>}
-        {error && <div className="alert-error" style={{color: '#dc3545', marginBottom: '15px'}}>{error}</div>}
+        {message && (
+          <div className="auth-error" style={{ background: 'rgba(40, 167, 69, 0.12)', color: '#4ade80', borderColor: 'rgba(40, 167, 69, 0.25)' }}>
+            {message}
+          </div>
+        )}
+        {error && <div className="auth-error">{error}</div>}
 
-        <form onSubmit={handleSubmit} className="login-form">
-          <div className="input-group">
+        <form onSubmit={handleSubmit}>
+          <div className="auth-field">
             <label>Email Address</label>
             <input 
               type="email" 
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter your email" 
+              placeholder="you@example.com" 
               required 
+              disabled={loading}
             />
           </div>
 
-          <button type="submit" className="login-btn" disabled={loading}>
+          <button type="submit" className="auth-btn" disabled={loading}>
             {loading ? "Sending..." : "Send Reset Link"}
           </button>
           
-          <div className="register-link" style={{marginTop: '20px', textAlign: 'center'}}>
-            Remembered your password? <span onClick={() => navigate('/login')} style={{cursor: 'pointer', color: '#007bff'}}>Back to Login</span>
-          </div>
+          <p className="auth-switch" style={{ marginTop: '24px' }}>
+            Remembered your password?{" "}
+            <span onClick={() => navigate('/login')}>Back to Login →</span>
+          </p>
         </form>
       </div>
     </div>

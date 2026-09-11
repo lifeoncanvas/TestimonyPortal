@@ -60,7 +60,11 @@ export default function Register() {
       localStorage.setItem("token", res.data.token);
       localStorage.setItem("user", JSON.stringify(res.data.user));
 
-      navigate("/");
+      if (res.data.user && res.data.user.role === "ADMIN") {
+        navigate("/admin");
+      } else {
+        navigate("/profile");
+      }
     } catch (err) {
       setError(err.response?.data?.message || err.message || "Registration failed.");
     } finally {
@@ -105,7 +109,11 @@ export default function Register() {
                 if (!popup.closed) popup.close();
                 localStorage.setItem("token", res.data.token);
                 localStorage.setItem("user", JSON.stringify(res.data.user));
-                navigate("/");
+                if (res.data.user && res.data.user.role === "ADMIN") {
+                  navigate("/admin");
+                } else {
+                  navigate("/profile");
+                }
             }
         } catch (err) {
             if (err.response && err.response.status !== 202) {

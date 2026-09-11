@@ -15,7 +15,6 @@ const ResetPassword = () => {
   const location = useLocation();
 
   useEffect(() => {
-    // Extract token from URL (e.g., ?token=XYZ)
     const queryParams = new URLSearchParams(location.search);
     const tokenParam = queryParams.get('token');
     if (tokenParam) {
@@ -59,40 +58,48 @@ const ResetPassword = () => {
   };
 
   return (
-    <div className="login-container">
-      <div className="login-box">
-        <h2 className="login-title">Create New Password</h2>
-        <p className="login-subtitle">Please enter your new secure password</p>
+    <div className="login-page">
+      <div className="auth-card">
+        <div className="auth-logo">
+          <span className="logo-icon">✨</span>
+          <h2>My Miracle Story</h2>
+        </div>
+        <h1>Create New Password</h1>
+        <p className="auth-sub">Please enter your new secure password</p>
         
-        {message && <div className="alert-success" style={{color: '#28a745', marginBottom: '15px'}}>{message}</div>}
-        {error && <div className="alert-error" style={{color: '#dc3545', marginBottom: '15px'}}>{error}</div>}
+        {message && (
+          <div className="auth-error" style={{ background: 'rgba(40, 167, 69, 0.12)', color: '#4ade80', borderColor: 'rgba(40, 167, 69, 0.25)' }}>
+            {message}
+          </div>
+        )}
+        {error && <div className="auth-error">{error}</div>}
 
-        <form onSubmit={handleSubmit} className="login-form">
-          <div className="input-group">
+        <form onSubmit={handleSubmit}>
+          <div className="auth-field">
             <label>New Password</label>
             <input 
               type="password" 
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter new password" 
+              placeholder="••••••••" 
               required 
-              disabled={!token}
+              disabled={!token || loading}
             />
           </div>
 
-          <div className="input-group">
+          <div className="auth-field">
             <label>Confirm New Password</label>
             <input 
               type="password" 
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Confirm new password" 
+              placeholder="••••••••" 
               required 
-              disabled={!token}
+              disabled={!token || loading}
             />
           </div>
 
-          <button type="submit" className="login-btn" disabled={loading || !token}>
+          <button type="submit" className="auth-btn" disabled={loading || !token} style={{ marginTop: '20px' }}>
             {loading ? "Resetting..." : "Reset Password"}
           </button>
         </form>

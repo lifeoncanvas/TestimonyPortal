@@ -55,7 +55,13 @@ function App() {
         .then(res => {
           localStorage.setItem("token", res.data.token);
           localStorage.setItem("user", JSON.stringify(res.data.user));
-          window.location.reload();
+          
+          const user = res.data.user;
+          if (user && user.role === "ADMIN") {
+            window.location.href = "/admin";
+          } else {
+            window.location.href = "/profile";
+          }
         })
         .catch(err => {
           console.error("Kingschat verification failed", err);
