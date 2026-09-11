@@ -164,6 +164,7 @@ function App() {
         <Route path="/admin/users" element={<ProtectedRoute requireAdmin={true}><AdminUsers /></ProtectedRoute>} />
         <Route path="/prayers" element={<ProtectedRoute requireAdmin={true}><PrayerWall /></ProtectedRoute>} />
       </Routes>
+      </KingsChatCallbackHandler>
     </BrowserRouter>
   );
 }
