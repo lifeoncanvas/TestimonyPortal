@@ -12,6 +12,32 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [kingschatLoading, setKingschatLoading] = useState(false);
 
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const session = searchParams.get("session");
+    if (session) {
+      setKingschatLoading(true);
+      window.history.replaceState({}, document.title, window.location.pathname);
+      
+      api.get(`/api/auth/kingschat/poll/${session}`)
+        .then(res => {
+          if (res.status === 200 && res.data && res.data.token) {
+            localStorage.setItem("token", res.data.token);
+            localStorage.setItem("user", JSON.stringify(res.data.user));
+            if (res.data.user && res.data.user.role === "ADMIN") {
+              navigate("/admin");
+            } else {
+              navigate("/profile");
+            }
+          }
+        })
+        .catch(err => {
+          setError(err.response?.data?.message || "KingsChat login failed on the server.");
+          setKingschatLoading(false);
+        });
+    }
+  }, [navigate]);
+
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
 
   const handleSubmit = async (e) => {

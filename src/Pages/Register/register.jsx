@@ -81,56 +81,7 @@ export default function Register() {
     
     const loginUrl = `https://accounts.kingschat.online/log-in?clientId=${clientId}&origin=${sessionId}`;
     
-    const width = 600;
-    const height = 700;
-    const left = window.screen.width / 2 - width / 2;
-    const top = window.screen.height / 2 - height / 2;
-    
-    const popup = window.open(loginUrl, "KingsChatLogin", `width=${width},height=${height},top=${top},left=${left}`);
-    
-    if (!popup) {
-        setError("Please allow popups for this site and try again.");
-        setKingschatLoading(false);
-        return;
-    }
-
-    let checks = 0;
-    const pollInterval = setInterval(async () => {
-        checks++;
-        if (popup.closed && checks > 2) {
-            clearInterval(pollInterval);
-            setKingschatLoading(false);
-        }
-        
-        try {
-            const res = await api.get(`/api/auth/kingschat/poll/${sessionId}`);
-            if (res.status === 200 && res.data && res.data.token) {
-                clearInterval(pollInterval);
-                if (!popup.closed) popup.close();
-                localStorage.setItem("token", res.data.token);
-                localStorage.setItem("user", JSON.stringify(res.data.user));
-                if (res.data.user && res.data.user.role === "ADMIN") {
-                  navigate("/admin");
-                } else {
-                  navigate("/profile");
-                }
-            }
-        } catch (err) {
-            if (err.response && err.response.status !== 202) {
-                clearInterval(pollInterval);
-                if (!popup.closed) popup.close();
-                setError(err.response?.data?.message || "KingsChat login failed on the server.");
-                setKingschatLoading(false);
-            }
-        }
-        
-        if (checks > 150) {
-            clearInterval(pollInterval);
-            setKingschatLoading(false);
-            if (!popup.closed) popup.close();
-            setError("Login timed out.");
-        }
-    }, 2000);
+    window.location.href = loginUrl;
   };
 
   return (
