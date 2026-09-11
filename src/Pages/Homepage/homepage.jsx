@@ -263,6 +263,12 @@ export default function Homepage() {
   const handleDelete = async (e, id) => {
     e.stopPropagation();
     if (!window.confirm("Are you sure you want to delete this testimony?")) return;
+    
+    if (typeof id === 'string' && (id.startsWith('t') || id.startsWith('s'))) {
+      alert("This is a placeholder (mock) testimony used for demonstration and cannot be permanently deleted from the database.");
+      return;
+    }
+
     try {
       await api.delete(`/api/testimonies/${id}`);
       setTrending(prev => prev.filter(t => t.id !== id));
@@ -340,16 +346,9 @@ export default function Homepage() {
     };
   };
 
-  const mappedTrending = trending.length > 0
-    ? trending.map(mapTrendingItem)
-    : TRENDING.map(t => ({
-        ...t,
-        categoryLabel: t.categoryLabel || "Miracle",
-      }));
+  const mappedTrending = trending.map(mapTrendingItem);
 
-  const mappedStories = stories.length > 0
-    ? stories.map(mapStoryItem)
-    : ALL_STORIES.filter(s => activeCategory === "all" || s.categoryKey === activeCategory);
+  const mappedStories = stories.map(mapStoryItem);
 
   function goToTestimony(id) { navigate(`/testimony/${id}`); }
 
@@ -387,6 +386,7 @@ export default function Homepage() {
                 <button
                   className="icon-btn admin-quick-btn"
                   aria-label="Admin Dashboard"
+                  title="Admin Portal (For Admin Only)"
                   onClick={() => navigate("/admin")}
                   style={{ marginRight: "10px", fontSize: "16px" }}
                 >

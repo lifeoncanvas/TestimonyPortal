@@ -3,7 +3,7 @@ import { useNavigate } from "react-router";
 import {
   ChevronLeft, Users, FileText, CheckCircle, Clock,
   XCircle, Heart, MessageCircle, Layers, TrendingUp,
-  Star, Shield, ArrowRight, BarChart3,
+  Star, Shield, ArrowRight, BarChart3, X,
 } from "lucide-react";
 import api from "../../services/axiosConfig";
 import "./styles.css";
@@ -13,9 +13,6 @@ export default function AdminDashboard() {
   const [dashboard, setDashboard] = useState(null);
   const [selectedTestimony, setSelectedTestimony] = useState(null);
   const [pending, setPending] = useState([]);
-  const [selectedStat, setSelectedStat] = useState(null);
-  const [statData, setStatData] = useState({});
-  const [statLoading, setStatLoading] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -42,42 +39,7 @@ export default function AdminDashboard() {
     }
   };
 
-  // For now, all stat clicks pull the dashboard summary as a simple way to show data
-  const endpointMap = {
-    users: "dashboard",
-    testimonies: "dashboard",
-    pending: "dashboard",
-    approved: "dashboard",
-    rejected: "dashboard",
-    categories: "dashboard",
-    likes: "dashboard",
-    comments: "dashboard",
-  };
 
-  const handleStatClick = (key) => {
-    console.log('Stat clicked:', key, 'Dashboard data:', dashboard);
-    setSelectedStat(key);
-    setStatLoading(true);
-    // Use the already-fetched dashboard data to extract the appropriate field
-    const fieldMap = {
-      users: "totalUsers",
-      testimonies: "totalTestimonies",
-      pending: "pendingTestimonies",
-      approved: "approvedTestimonies",
-      rejected: "rejectedTestimonies",
-      categories: "totalCategories",
-      likes: "totalLikes",
-      comments: "totalComments",
-    };
-    const field = fieldMap[key];
-    const value = dashboard ? dashboard[field] : undefined;
-    if (value !== undefined) {
-      setStatData({ [field]: value });
-    } else {
-      setStatData({}); // empty object to trigger fallback UI
-    }
-    setStatLoading(false);
-  };
 
   const handleQuickApprove = async (id) => {
     try {
@@ -137,34 +99,16 @@ export default function AdminDashboard() {
             key={i}
             className="admin-stat-card"
             style={{ "--card-gradient": s.gradient }}
-            onClick={() => handleStatClick(s.key)}
           >
             <div className="admin-stat-icon">{s.icon}</div>
-            <p className="admin-stat-value">{s.value.toLocaleString()}</p>
-            <p className="admin-stat-label">{s.label}</p>
+            <div className="admin-stat-content">
+              <p className="admin-stat-value">{s.value.toLocaleString()}</p>
+              <p className="admin-stat-label">{s.label}</p>
+            </div>
           </div>
         ))}
       </section>
 
-      {/* Selected Stat Details */}
-      {selectedStat && (
-        <section className="admin-stat-details" style={{ marginTop: '20px', padding: '10px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
-          <h2 className="admin-section-title" style={{ color: '#fff' }}><MessageCircle size={16} /> {selectedStat.charAt(0).toUpperCase() + selectedStat.slice(1)} Details</h2>
-          {statLoading ? (
-            <p style={{ color: '#ddd' }}>Loading...</p>
-          ) : (
-            <div className="admin-stat-info">
-              {statData && Object.keys(statData).length > 0 ? (
-                Object.entries(statData).map(([k, v]) => (
-                  <p key={k} style={{ color: '#eee' }}><strong>{k}:</strong> {v?.toString()}</p>
-                ))
-              ) : (
-                <p style={{ color: '#aaa' }}>No data available for {selectedStat}.</p>
-              )}
-            </div>
-          )}
-        </section>
-      )}
 
       {/* Quick Actions */}
       <section className="admin-actions">
@@ -260,18 +204,56 @@ export default function AdminDashboard() {
         )}
       </section>
 
-      {/* Selected Testimony Details */}
+      {/* Selected Testimony Details Modal */}
       {selectedTestimony && (
-        <section className="admin-selected-testimony">
-          <h2 className="admin-section-title"><MessageCircle size={16} /> Selected Testimony Details</h2>
-          <div className="admin-detail-card">
-            <h3>{selectedTestimony.title}</h3>
-            <p><strong>Category:</strong> {selectedTestimony.category?.name || "General"}</p>
-            <p><strong>Author:</strong> {selectedTestimony.user?.name || "Anonymous"} ({selectedTestimony.country})</p>
-            <p><strong>Description:</strong> {selectedTestimony.description}</p>
-            <p><strong>Created:</strong> {selectedTestimony.createdAt ? new Date(selectedTestimony.createdAt).toLocaleString() : ""}</p>
+        <div className="admin-modal-overlay" onClick={() => setSelectedTestimony(null)}>
+          <div className="admin-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="admin-modal-header">
+              <h2 className="admin-modal-title">Review Testimony</h2>
+              <button className="admin-modal-close" onClick={() => setSelectedTestimony(null)}>
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="admin-modal-body">
+              <div className="admin-modal-info-grid">
+                <div className="admin-modal-info-item">
+                  <span>Title</span>
+                  <p>{selectedTestimony.title}</p>
+                </div>
+                <div className="admin-modal-info-item">
+                  <span>Category</span>
+                  <p>{selectedTestimony.category?.name || "General"}</p>
+                </div>
+                <div className="admin-modal-info-item">
+                  <span>Author</span>
+                  <p>{selectedTestimony.user?.name || "Anonymous"} ({selectedTestimony.country || "N/A"})</p>
+                </div>
+                <div className="admin-modal-info-item">
+                  <span>Created Date</span>
+                  <p>{selectedTestimony.createdAt ? new Date(selectedTestimony.createdAt).toLocaleString() : ""}</p>
+                </div>
+              </div>
+              
+              <div className="admin-modal-description">
+                <span>Description</span>
+                <p className="admin-modal-desc-text">{selectedTestimony.description}</p>
+              </div>
+            </div>
+            
+            <div className="admin-modal-footer">
+              <button className="admin-btn-secondary" onClick={() => setSelectedTestimony(null)}>
+                Cancel
+              </button>
+              <button 
+                className="admin-btn-approve" 
+                onClick={() => { handleQuickApprove(selectedTestimony.id); setSelectedTestimony(null); }}
+              >
+                <CheckCircle size={16} /> Approve Testimony
+              </button>
+            </div>
           </div>
-        </section>
+        </div>
       )}
     </div>
   );
