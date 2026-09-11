@@ -76,46 +76,43 @@ export default function Register() {
     setError("");
     setKingschatLoading(true);
 
-    // Use the same clientId that is confirmed working on this server
-    const clientId = (
-      window.ENV?.KINGSCHAT_CLIENT_ID ||
-      process.env.REACT_APP_KINGSCHAT_CLIENT_ID ||
-      "8ae69d5f-d25d-4c05-9914-ab947ffa5b77"
-    ).trim();
+    const clientId = "4e67fd93-25ee-458b-9fde-6bcf6a1c5e9a";
 
-    kingsChatWebSdk
-      .login({ clientId, scopes: ["authenticate", "profile"] })
-      .then(async (tokenResponse) => {
-        const { accessToken, user: kcUser } = tokenResponse;
-        try {
-          const res = await api.post("/api/auth/kingschat/token", {
-            token:     accessToken,
-            email:     kcUser?.email      || null,
-            firstName: kcUser?.first_name  || kcUser?.firstName || null,
-            lastName:  kcUser?.last_name   || kcUser?.lastName  || null,
-            username:  kcUser?.username    || null,
-          });
-          localStorage.setItem("token", res.data.token);
-          localStorage.setItem("user", JSON.stringify(res.data.user));
-          if (res.data.user && res.data.user.role === "ADMIN") {
-            navigate("/admin");
-          } else {
-            navigate("/profile");
+    import("kingschat-web-sdk").then(({ default: kingsChatWebSdk }) => {
+      kingsChatWebSdk
+        .login({ clientId, scopes: ["authenticate", "profile"] })
+        .then(async (tokenResponse) => {
+          const { accessToken, user: kcUser } = tokenResponse;
+          try {
+            const res = await api.post("/api/auth/kingschat/token", {
+              token: accessToken,
+              email: kcUser?.email || null,
+              firstName: kcUser?.first_name || kcUser?.firstName || null,
+              lastName: kcUser?.last_name || kcUser?.lastName || null,
+              username: kcUser?.username || null,
+            });
+            localStorage.setItem("token", res.data.token);
+            localStorage.setItem("user", JSON.stringify(res.data.user));
+            if (res.data.user && res.data.user.role === "ADMIN") {
+              window.location.href = "/admin";
+            } else {
+              window.location.href = "/profile";
+            }
+          } catch (err) {
+            setError(err.response?.data?.message || "KingsChat registration failed on the server.");
+            setKingschatLoading(false);
           }
-        } catch (err) {
-          setError(err.response?.data?.message || "KingsChat registration failed on the server.");
+        })
+        .catch((err) => {
+          const msg = err?.message || String(err) || "";
+          if (msg.toLowerCase().includes("cancel") || msg.toLowerCase().includes("closed")) {
+            setError("Sign-in was cancelled. Please make sure to allow the popup.");
+          } else {
+            setError("KingsChat sign-in failed. Please try again.");
+          }
           setKingschatLoading(false);
-        }
-      })
-      .catch((err) => {
-        const msg = err?.message || String(err) || "";
-        if (msg.toLowerCase().includes("cancel") || msg.toLowerCase().includes("closed")) {
-          setError("Sign-in was cancelled. Please try again.");
-        } else {
-          setError("KingsChat sign-in failed. Please try again.");
-        }
-        setKingschatLoading(false);
-      });
+        });
+    });
   };
 
 

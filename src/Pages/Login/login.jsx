@@ -10,6 +10,7 @@ export default function Login() {
   const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [kingschatLoading, setKingschatLoading] = useState(false);
   const [loginMethod, setLoginMethod] = useState(null);
 
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
@@ -42,23 +43,52 @@ export default function Login() {
     }
   };
 
-  // ── KingsChat redirect flow ────────────────────────────────────────────────
-  // Redirect URL registered in KingsChat: http://148.66.154.48:8083
-  // After login KingsChat redirects to: http://148.66.154.48:8083?code=XXX&origin=YYY
-  // App.js catches ?code= and sends it to POST /api/auth/kingschat/verify
+  // ── KingsChat SDK flow ─────────────────────────────────────────────────────
   const handleKingschatAuth = () => {
-    const sessionId =
-      Math.random().toString(36).substring(2, 10) +
-      Math.random().toString(36).substring(2, 10);
+    setError("");
+    setKingschatLoading(true);
 
-    const loginUrl =
-      `https://accounts.kingschat.online/log-in` +
-      `?clientId=${KINGSCHAT_CLIENT_ID}` +
-      `&origin=${sessionId}`;
+    const clientId = "4e67fd93-25ee-458b-9fde-6bcf6a1c5e9a";
 
-    // Full page redirect — KingsChat will redirect back to http://148.66.154.48:8083?code=...&origin=...
-    // App.js handles the rest
-    window.location.href = loginUrl;
+    // Use Kingschat Web SDK which opens a popup
+    import("kingschat-web-sdk").then(({ default: kingsChatWebSdk }) => {
+      kingsChatWebSdk
+        .login({ clientId, scopes: ["authenticate", "profile"] })
+        .then(async (tokenResponse) => {
+          const { accessToken, user: kcUser } = tokenResponse;
+
+          try {
+            const res = await api.post("/api/auth/kingschat/token", {
+              token: accessToken,
+              email: kcUser?.email || null,
+              firstName: kcUser?.first_name || kcUser?.firstName || null,
+              lastName: kcUser?.last_name || kcUser?.lastName || null,
+              username: kcUser?.username || null,
+            });
+
+            localStorage.setItem("token", res.data.token);
+            localStorage.setItem("user", JSON.stringify(res.data.user));
+
+            if (res.data.user?.role === "ADMIN") {
+              window.location.href = "/admin";
+            } else {
+              window.location.href = "/profile";
+            }
+          } catch (err) {
+            setError(err.response?.data?.message || "Server verification failed.");
+            setKingschatLoading(false);
+          }
+        })
+        .catch((err) => {
+          const msg = err?.message || String(err) || "";
+          if (msg.toLowerCase().includes("cancel") || msg.toLowerCase().includes("closed")) {
+            setError("Sign-in was cancelled. Please make sure to allow the popup.");
+          } else {
+            setError("KingsChat sign-in failed. Please try again.");
+          }
+          setKingschatLoading(false);
+        });
+    });
   };
 
   const toggleMethod = (method) => {
