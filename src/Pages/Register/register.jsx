@@ -75,14 +75,44 @@ export default function Register() {
   const handleKingschatAuth = () => {
     setError("");
     setKingschatLoading(true);
-    
-    const clientId = process.env.REACT_APP_KINGSCHAT_CLIENT_ID || "4e67fd93-25ee-458b-9fde-6bcf6a1c5e9a";
-    const sessionId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-    
-    const loginUrl = `https://accounts.kingschat.online/log-in?clientId=${clientId}&origin=${sessionId}`;
-    
-    window.location.href = loginUrl;
+
+    const clientId = (
+      window.ENV?.KINGSCHAT_CLIENT_ID ||
+      process.env.REACT_APP_KINGSCHAT_CLIENT_ID ||
+      "4e67fd93-25ee-458b-9fde-6bcf6a1c5e9a"
+    ).trim();
+
+    kingsChatWebSdk
+      .login({ clientId, scopes: ["authenticate", "profile"] })
+      .then(async (tokenResponse) => {
+        const { accessToken, user: kcUser } = tokenResponse;
+        try {
+          const res = await api.post("/api/auth/kingschat/token", {
+            token:     accessToken,
+            email:     kcUser?.email      || null,
+            firstName: kcUser?.first_name  || kcUser?.firstName || null,
+            lastName:  kcUser?.last_name   || kcUser?.lastName  || null,
+            username:  kcUser?.username    || null,
+          });
+          localStorage.setItem("token", res.data.token);
+          localStorage.setItem("user", JSON.stringify(res.data.user));
+          if (res.data.user && res.data.user.role === "ADMIN") {
+            navigate("/admin");
+          } else {
+            navigate("/profile");
+          }
+        } catch (err) {
+          setError(err.response?.data?.message || "KingsChat registration failed on the server.");
+          setKingschatLoading(false);
+        }
+      })
+      .catch((err) => {
+        console.error("KingsChat SDK error:", err);
+        setError("KingsChat login was cancelled or failed. Please try again.");
+        setKingschatLoading(false);
+      });
   };
+
 
   return (
     <div className="register-page">
