@@ -76,10 +76,11 @@ export default function Register() {
     setError("");
     setKingschatLoading(true);
 
+    // Use the same clientId that is confirmed working on this server
     const clientId = (
       window.ENV?.KINGSCHAT_CLIENT_ID ||
       process.env.REACT_APP_KINGSCHAT_CLIENT_ID ||
-      "4e67fd93-25ee-458b-9fde-6bcf6a1c5e9a"
+      "8ae69d5f-d25d-4c05-9914-ab947ffa5b77"
     ).trim();
 
     kingsChatWebSdk
@@ -107,8 +108,12 @@ export default function Register() {
         }
       })
       .catch((err) => {
-        console.error("KingsChat SDK error:", err);
-        setError("KingsChat login was cancelled or failed. Please try again.");
+        const msg = err?.message || String(err) || "";
+        if (msg.toLowerCase().includes("cancel") || msg.toLowerCase().includes("closed")) {
+          setError("Sign-in was cancelled. Please try again.");
+        } else {
+          setError("KingsChat sign-in failed. Please try again.");
+        }
         setKingschatLoading(false);
       });
   };
