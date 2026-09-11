@@ -509,7 +509,6 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
             >
               <option value="" disabled hidden>Select an option</option>
               <option value="GRC Office">GRC Office</option>
-              <option value="Organiser">Organiser</option>
               <option value="Zonal Manager">Zonal Manager</option>
               <option value="Other">Other</option>
             </select>
