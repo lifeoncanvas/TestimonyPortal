@@ -1,19 +1,81 @@
-import { useState } from "react";
-import { useNavigate } from "react-router";
+import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router";
 import "./styles.css";
 import api from "../../services/axiosConfig";
 
 const KINGSCHAT_CLIENT_ID = "4e67fd93-25ee-458b-9fde-6bcf6a1c5e9a";
+// Official KingsChat login URL as per documentation
+const KINGSCHAT_LOGIN_URL = `https://accounts.kingschat.online/log-in?clientId=${KINGSCHAT_CLIENT_ID}`;
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [kingschatLoading, setKingschatLoading] = useState(false);
   const [loginMethod, setLoginMethod] = useState(null);
+  const [kcStatus, setKcStatus] = useState(null); // 'polling' | 'success' | 'error'
 
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
+
+  // ── Handle KingsChat callback from URL params ───────────────────────────────
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const session = params.get("session");
+    const kcError = params.get("kc_error");
+
+    if (kcError) {
+      setError("KingsChat sign-in failed. Please try again.");
+      // Clean up URL
+      navigate("/login", { replace: true });
+      return;
+    }
+
+    if (session) {
+      // We have a session key — poll the backend for the JWT
+      setKcStatus("polling");
+      let attempts = 0;
+      const maxAttempts = 20;
+
+      const poll = async () => {
+        attempts++;
+        try {
+          const res = await api.get(`/api/auth/kingschat/poll/${session}`);
+          if (res.status === 200 && res.data?.token) {
+            localStorage.setItem("token", res.data.token);
+            localStorage.setItem("user", JSON.stringify(res.data.user));
+            setKcStatus("success");
+            if (res.data.user?.role === "ADMIN") {
+              window.location.href = "/admin";
+            } else {
+              window.location.href = "/profile";
+            }
+            return;
+          }
+        } catch (err) {
+          if (err.response?.status === 202) {
+            // 202 = not ready yet, keep polling
+          } else {
+            setKcStatus("error");
+            setError("KingsChat sign-in failed. Please try again.");
+            navigate("/login", { replace: true });
+            return;
+          }
+        }
+
+        if (attempts < maxAttempts) {
+          setTimeout(poll, 1000);
+        } else {
+          setKcStatus("error");
+          setError("KingsChat sign-in timed out. Please try again.");
+          navigate("/login", { replace: true });
+        }
+      };
+
+      poll();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Email/password login ───────────────────────────────────────────────────
   const handleSubmit = async (e) => {
@@ -43,57 +105,47 @@ export default function Login() {
     }
   };
 
-  // ── KingsChat SDK flow ─────────────────────────────────────────────────────
-  const handleKingschatAuth = () => {
-    setError("");
-    setKingschatLoading(true);
-
-    const clientId = "4e67fd93-25ee-458b-9fde-6bcf6a1c5e9a";
-
-    // Use Kingschat Web SDK which opens a popup
-    import("kingschat-web-sdk").then(({ default: kingsChatWebSdk }) => {
-      kingsChatWebSdk
-        .login({ clientId, scopes: ["authenticate", "profile"] })
-        .then(async (tokenResponse) => {
-          const { accessToken, user: kcUser } = tokenResponse;
-
-          try {
-            const res = await api.post("/api/auth/kingschat/token", {
-              token: accessToken,
-              email: kcUser?.email || null,
-              firstName: kcUser?.first_name || kcUser?.firstName || null,
-              lastName: kcUser?.last_name || kcUser?.lastName || null,
-              username: kcUser?.username || null,
-            });
-
-            localStorage.setItem("token", res.data.token);
-            localStorage.setItem("user", JSON.stringify(res.data.user));
-
-            if (res.data.user?.role === "ADMIN") {
-              window.location.href = "/admin";
-            } else {
-              window.location.href = "/profile";
-            }
-          } catch (err) {
-            setError(err.response?.data?.message || "Server verification failed.");
-            setKingschatLoading(false);
-          }
-        })
-        .catch((err) => {
-          const msg = err?.message || String(err) || "";
-          if (msg.toLowerCase().includes("cancel") || msg.toLowerCase().includes("closed")) {
-            setError("Sign-in was cancelled. Please make sure to allow the popup.");
-          } else {
-            setError("KingsChat sign-in failed. Please try again.");
-          }
-          setKingschatLoading(false);
-        });
-    });
+  // ── KingsChat official redirect flow ──────────────────────────────────────
+  const handleKingschatLogin = () => {
+    // Pass a unique origin (session key) so the backend can match the callback
+    const sessionKey = "kc-" + Date.now();
+    const loginUrl = `${KINGSCHAT_LOGIN_URL}&origin=${encodeURIComponent(sessionKey)}`;
+    // Redirect the user's browser to the official KingsChat login page
+    window.location.href = loginUrl;
   };
 
   const toggleMethod = (method) => {
     setLoginMethod((prev) => (prev === method ? null : method));
   };
+
+  // ── Show polling / loading screen while processing KingsChat callback ──────
+  if (kcStatus === "polling") {
+    return (
+      <div style={{
+        minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "linear-gradient(135deg, #0a0a16 0%, #13132b 100%)",
+        color: "white",
+        fontFamily: "'Inter', sans-serif",
+        gap: "20px",
+      }}>
+        <div style={{
+          width: "56px",
+          height: "56px",
+          borderRadius: "50%",
+          border: "3px solid rgba(201,169,110,0.15)",
+          borderTopColor: "#c9a96e",
+          animation: "kcSpin 0.8s linear infinite",
+        }} />
+        <h2 style={{ margin: 0, fontWeight: 600 }}>Signing you in with KingsChat...</h2>
+        <p style={{ margin: 0, color: "#9a95a8", fontSize: "14px" }}>Please wait a moment</p>
+        <style>{`@keyframes kcSpin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
 
   return (
     <div className="login-page">
@@ -125,7 +177,7 @@ export default function Login() {
               boxShadow: "0 4px 14px rgba(74,105,221,0.35)",
               transition: "all 0.2s ease",
             }}
-            onClick={handleKingschatAuth}
+            onClick={handleKingschatLogin}
             disabled={loading}
             onMouseOver={(e) => { if (!loading) e.currentTarget.style.transform = "translateY(-1px)"; }}
             onMouseOut={(e) => { e.currentTarget.style.transform = "translateY(0)"; }}
