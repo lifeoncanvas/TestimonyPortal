@@ -1,16 +1,11 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router";
+import api from "../../services/axiosConfig";
 
 /**
- * Handles the /kc-callback route.
- * The backend redirects here after a successful KingsChat login with:
- *   ?token=JWT&name=UserName&redirect=/profile (or /admin)
- *
- * This page:
- * 1. Reads the token + user info from the URL
- * 2. Stores them in localStorage
- * 3. Shows a "Welcome, [name]!" message briefly
- * 4. Redirects to the dashboard (/profile or /admin)
+ * Handles /kc-callback after KingsChat OAuth2 login.
+ * Reads token + name from URL, stores token, fetches full profile,
+ * shows "Welcome, [Name]!" then redirects to dashboard.
  */
 export default function KcCallbackPage() {
   const location = useLocation();
@@ -19,32 +14,42 @@ export default function KcCallbackPage() {
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    const token = params.get("token");
-    const name = params.get("name");
+    const rawToken = params.get("token");
+    const rawName = params.get("name");
     const redirect = params.get("redirect") || "/profile";
 
-    if (!token) {
+    if (!rawToken) {
       setError("Login failed — no token received. Please try again.");
       setTimeout(() => { window.location.replace("/login"); }, 3000);
       return;
     }
 
-    // Decode name
-    const decodedName = name ? decodeURIComponent(name) : "Friend";
+    const token = decodeURIComponent(rawToken);
+    const decodedName = rawName ? decodeURIComponent(rawName) : "Friend";
     setUserName(decodedName);
 
-    // Build minimal user object from URL params
-    const role = redirect === "/admin" ? "ADMIN" : "USER";
-    const userObj = { name: decodedName, role };
+    // 1. Store token first so API calls work
+    localStorage.setItem("token", token);
 
-    // Store in localStorage
-    localStorage.setItem("token", decodeURIComponent(token));
-    localStorage.setItem("user", JSON.stringify(userObj));
+    // 2. Fetch full user profile from backend
+    api.get("/api/users/me")
+      .then((res) => {
+        const fullUser = res.data;
+        localStorage.setItem("user", JSON.stringify(fullUser));
+        if (fullUser?.name) setUserName(fullUser.name);
+      })
+      .catch(() => {
+        // Fallback: store minimal user from URL params
+        const role = redirect === "/admin" ? "ADMIN" : "USER";
+        localStorage.setItem("user", JSON.stringify({ name: decodedName, role }));
+      })
+      .finally(() => {
+        // 3. Redirect to dashboard after 1.8s
+        setTimeout(() => {
+          window.location.replace(redirect);
+        }, 1800);
+      });
 
-    // Show welcome message briefly then redirect
-    setTimeout(() => {
-      window.location.replace(redirect);
-    }, 1800);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -64,17 +69,21 @@ export default function KcCallbackPage() {
   return (
     <div style={styles.page}>
       <div style={styles.card}>
-        {/* Animated checkmark */}
+        {/* Animated success icon */}
         <div style={styles.iconWrap}>
-          <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-            <circle cx="20" cy="20" r="20" fill="rgba(201,169,110,0.15)" />
+          <svg width="44" height="44" viewBox="0 0 44 44" fill="none">
+            <circle cx="22" cy="22" r="22" fill="rgba(201,169,110,0.18)" />
             <path
-              d="M12 20l6 6 10-12"
+              d="M13 22l7 7 11-13"
               stroke="#c9a96e"
               strokeWidth="3"
               strokeLinecap="round"
               strokeLinejoin="round"
-              style={{ animation: "drawCheck 0.4s ease forwards 0.3s", strokeDasharray: 30, strokeDashoffset: 30 }}
+              style={{
+                strokeDasharray: 35,
+                strokeDashoffset: 35,
+                animation: "drawCheck 0.5s ease forwards 0.3s",
+              }}
             />
           </svg>
         </div>
@@ -84,11 +93,11 @@ export default function KcCallbackPage() {
         </h1>
         <p style={styles.sub}>You've successfully signed in with KingsChat.</p>
 
-        {/* Progress bar */}
+        {/* Animated progress bar */}
         <div style={styles.progressWrap}>
           <div style={styles.progressBar} />
         </div>
-        <p style={{ ...styles.sub, color: "#5c576c", fontSize: "12px", marginTop: "12px" }}>
+        <p style={{ ...styles.sub, color: "#5c576c", fontSize: "12px", marginTop: "10px" }}>
           Taking you to your dashboard...
         </p>
       </div>
@@ -105,9 +114,9 @@ export default function KcCallbackPage() {
           from { width: 0%; }
           to   { width: 100%; }
         }
-        @keyframes pulse {
-          0%, 100% { transform: scale(1); }
-          50%       { transform: scale(1.08); }
+        @keyframes glowPulse {
+          0%, 100% { box-shadow: 0 0 30px rgba(201,169,110,0.15); }
+          50%       { box-shadow: 0 0 50px rgba(201,169,110,0.35); }
         }
       `}</style>
     </div>
@@ -120,7 +129,8 @@ const styles = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    background: "radial-gradient(circle at 10% 20%, rgba(120,80,220,0.12) 0%, rgba(10,10,22,0.98) 80%), linear-gradient(135deg, #060612 0%, #0d0d21 100%)",
+    background:
+      "radial-gradient(circle at 10% 20%, rgba(120,80,220,0.12) 0%, rgba(10,10,22,0.98) 80%), linear-gradient(135deg, #060612 0%, #0d0d21 100%)",
     fontFamily: "'Inter', system-ui, sans-serif",
     padding: "24px",
   },
@@ -137,30 +147,37 @@ const styles = {
     animation: "authFadeIn 0.5s cubic-bezier(0.16,1,0.3,1)",
   },
   iconWrap: {
-    width: "80px",
-    height: "80px",
+    width: "88px",
+    height: "88px",
     borderRadius: "50%",
-    background: "rgba(201,169,110,0.1)",
-    border: "1px solid rgba(201,169,110,0.25)",
+    background: "rgba(201,169,110,0.08)",
+    border: "2px solid rgba(201,169,110,0.3)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    margin: "0 auto 24px",
-    boxShadow: "0 0 40px rgba(201,169,110,0.15)",
-    animation: "pulse 2s ease infinite",
+    margin: "0 auto 28px",
+    animation: "glowPulse 2s ease infinite",
   },
   welcome: {
     margin: "0 0 10px",
     fontFamily: "'Outfit', sans-serif",
-    fontSize: "28px",
+    fontSize: "30px",
     fontWeight: "800",
     color: "#f0ecf8",
     letterSpacing: "-0.5px",
+  },
+  title: {
+    margin: "0 0 10px",
+    fontFamily: "'Outfit', sans-serif",
+    fontSize: "24px",
+    fontWeight: "700",
+    color: "#f0ecf8",
   },
   name: {
     background: "linear-gradient(135deg, #e5c07b 0%, #b89758 100%)",
     WebkitBackgroundClip: "text",
     WebkitTextFillColor: "transparent",
+    backgroundClip: "text",
   },
   sub: {
     color: "#9a95a8",
@@ -174,11 +191,10 @@ const styles = {
     background: "rgba(255,255,255,0.06)",
     borderRadius: "2px",
     overflow: "hidden",
-    margin: "0 0 0",
   },
   progressBar: {
     height: "100%",
-    background: "linear-gradient(135deg, #e5c07b 0%, #b89758 100%)",
+    background: "linear-gradient(90deg, #e5c07b 0%, #b89758 100%)",
     borderRadius: "2px",
     animation: "fillBar 1.8s ease forwards",
   },
