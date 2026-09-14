@@ -4,7 +4,6 @@ import "./styles.css";
 import api from "../../services/axiosConfig";
 
 const KINGSCHAT_CLIENT_ID = "4e67fd93-25ee-458b-9fde-6bcf6a1c5e9a";
-// Official KingsChat login URL as per documentation
 const KINGSCHAT_LOGIN_URL = `https://accounts.kingschat.online/log-in?clientId=${KINGSCHAT_CLIENT_ID}`;
 
 export default function Login() {
@@ -21,18 +20,17 @@ export default function Login() {
   // ── Handle KingsChat callback from URL params ───────────────────────────────
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    const session = params.get("session");
     const kcError = params.get("kc_error");
+    const session = params.get("session");
 
     if (kcError) {
       setError("KingsChat sign-in failed. Please try again.");
-      // Clean up URL
       navigate("/login", { replace: true });
       return;
     }
 
     if (session) {
-      // We have a session key — poll the backend for the JWT
+      // Fallback polling path (used if direct JWT redirect wasn't possible)
       setKcStatus("polling");
       let attempts = 0;
       const maxAttempts = 20;
@@ -45,17 +43,12 @@ export default function Login() {
             localStorage.setItem("token", res.data.token);
             localStorage.setItem("user", JSON.stringify(res.data.user));
             setKcStatus("success");
-            if (res.data.user?.role === "ADMIN") {
-              window.location.href = "/admin";
-            } else {
-              window.location.href = "/profile";
-            }
+            const role = res.data.user?.role;
+            window.location.replace(role === "ADMIN" ? "/admin" : "/profile");
             return;
           }
         } catch (err) {
-          if (err.response?.status === 202) {
-            // 202 = not ready yet, keep polling
-          } else {
+          if (err.response?.status !== 202) {
             setKcStatus("error");
             setError("KingsChat sign-in failed. Please try again.");
             navigate("/login", { replace: true });
@@ -107,10 +100,8 @@ export default function Login() {
 
   // ── KingsChat official redirect flow ──────────────────────────────────────
   const handleKingschatLogin = () => {
-    // Pass a unique origin (session key) so the backend can match the callback
     const sessionKey = "kc-" + Date.now();
     const loginUrl = `${KINGSCHAT_LOGIN_URL}&origin=${encodeURIComponent(sessionKey)}`;
-    // Redirect the user's browser to the official KingsChat login page
     window.location.href = loginUrl;
   };
 
@@ -118,7 +109,7 @@ export default function Login() {
     setLoginMethod((prev) => (prev === method ? null : method));
   };
 
-  // ── Show polling / loading screen while processing KingsChat callback ──────
+  // ── Loading screen while processing ──────────────────────────────────────
   if (kcStatus === "polling") {
     return (
       <div style={{
@@ -133,9 +124,7 @@ export default function Login() {
         gap: "20px",
       }}>
         <div style={{
-          width: "56px",
-          height: "56px",
-          borderRadius: "50%",
+          width: "56px", height: "56px", borderRadius: "50%",
           border: "3px solid rgba(201,169,110,0.15)",
           borderTopColor: "#c9a96e",
           animation: "kcSpin 0.8s linear infinite",
