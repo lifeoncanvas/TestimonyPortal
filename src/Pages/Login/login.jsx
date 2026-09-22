@@ -98,11 +98,57 @@ export default function Login() {
     }
   };
 
-  // ── KingsChat official redirect flow ──────────────────────────────────────
+  // ── KingsChat login flow ──────────────────────────────────────────────────
   const handleKingschatLogin = () => {
-    const sessionKey = "kc-" + Date.now();
-    const loginUrl = `${KINGSCHAT_LOGIN_URL}&origin=${encodeURIComponent(sessionKey)}`;
-    window.location.href = loginUrl;
+    setError("");
+    setLoading(true);
+
+    import("kingschat-web-sdk")
+      .then(({ default: sdk }) => {
+        sdk
+          .login({
+            clientId: KINGSCHAT_CLIENT_ID,
+            scopes: ["authenticate", "profile"],
+          })
+          .then(async (tokenResponse) => {
+            const { accessToken, user: kcUser } = tokenResponse;
+            try {
+              const res = await api.post("/api/auth/kingchat", {
+                token: accessToken,
+                email: kcUser?.email || null,
+                firstName: kcUser?.first_name || kcUser?.firstName || null,
+                lastName: kcUser?.last_name || kcUser?.lastName || null,
+                username: kcUser?.username || null,
+              });
+
+              localStorage.setItem("token", res.data.token);
+              localStorage.setItem("user", JSON.stringify(res.data.user));
+
+              const role = res.data.user?.role;
+              window.location.replace(role === "ADMIN" ? "/admin" : "/");
+            } catch (err) {
+              setError(err.response?.data?.message || "KingsChat login failed on server.");
+              setLoading(false);
+            }
+          })
+          .catch((err) => {
+            const msg = err?.message || String(err) || "";
+            if (msg.toLowerCase().includes("cancel") || msg.toLowerCase().includes("closed")) {
+              setError("Sign-in was cancelled. Please make sure to allow the popup.");
+              setLoading(false);
+            } else {
+              // Fallback to direct redirect flow
+              const sessionKey = "kc-" + Date.now();
+              const loginUrl = `${KINGSCHAT_LOGIN_URL}&origin=${encodeURIComponent(sessionKey)}`;
+              window.location.href = loginUrl;
+            }
+          });
+      })
+      .catch(() => {
+        const sessionKey = "kc-" + Date.now();
+        const loginUrl = `${KINGSCHAT_LOGIN_URL}&origin=${encodeURIComponent(sessionKey)}`;
+        window.location.href = loginUrl;
+      });
   };
 
   const toggleMethod = (method) => {
