@@ -1,9 +1,16 @@
 import axios from "axios";
 
-const apiBaseUrl = (
-  process.env.REACT_APP_API_URL ||
-  (typeof window !== "undefined" && (window.location.hostname === "testimonyportal.com" || window.location.hostname === "www.testimonyportal.com" || window.location.port === "8083") ? "" : "https://testimonyportal.com")
-).replace(/\/$/, "");
+const getApiBaseUrl = () => {
+  if (process.env.REACT_APP_API_URL) {
+    return process.env.REACT_APP_API_URL;
+  }
+  if (typeof window !== "undefined" && window.location && window.location.origin) {
+    return window.location.origin;
+  }
+  return "https://testimonyportal.com";
+};
+
+const apiBaseUrl = getApiBaseUrl().replace(/\/$/, "");
 
 const api = axios.create({
   baseURL: apiBaseUrl,
