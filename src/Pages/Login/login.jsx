@@ -44,7 +44,7 @@ export default function Login() {
             localStorage.setItem("user", JSON.stringify(res.data.user));
             setKcStatus("success");
             const role = res.data.user?.role;
-            window.location.replace(role === "ADMIN" ? "/admin" : "/profile");
+            window.location.replace(role === "ADMIN" ? "/admin" : "/");
             return;
           }
         } catch (err) {
@@ -89,7 +89,7 @@ export default function Login() {
       if (res.data.user?.role === "ADMIN") {
         navigate("/admin");
       } else {
-        navigate("/profile");
+        navigate("/");
       }
     } catch (err) {
       setError(err.response?.data?.message || err.message || "Invalid credentials.");
