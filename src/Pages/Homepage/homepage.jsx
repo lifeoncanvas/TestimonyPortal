@@ -209,55 +209,43 @@ export default function Homepage() {
     }
   }, [isLoggedIn]);
 
-  // Fetch trending & today's testimony on mount
+  // Fetch trending, today's testimony, and recent stories in parallel for fast loading
   useEffect(() => {
-    fetchTrendingAndToday();
-  }, []);
-
-  const fetchTrendingAndToday = async () => {
-    try {
-      const trendingRes = await api.get("/api/testimonies/trending");
-      setTrending(trendingRes.data || []);
-    } catch (err) {
-      console.error("Error fetching trending:", err);
-    }
-
-    try {
-      const todayRes = await api.get("/api/testimonies/today");
-      setTod(todayRes.data);
-    } catch (err) {
-      console.error("Error fetching today testimony:", err);
-      // Fallback: fetch any featured testimony
-      try {
-        const featuredRes = await api.get("/api/testimonies/featured");
-        if (featuredRes.data && featuredRes.data.length > 0) {
-          setTod(featuredRes.data[0]);
-        }
-      } catch (fErr) {
-        console.error("Error fetching fallback featured:", fErr);
-      }
-    }
-  };
-
-  // Fetch recent stories when category changes
-  useEffect(() => {
-    fetchRecentStories();
+    fetchAllData();
   }, [activeCategory]);
 
-  const fetchRecentStories = async () => {
-    try {
-      setLoading(true);
-      const categoryId = KEY_TO_ID[activeCategory];
-      const params = categoryId ? { categoryId, status: "APPROVED" } : { status: "APPROVED" };
-      const res = await api.get("/api/testimonies", { params });
-      const rawList = res.data.content || (Array.isArray(res.data) ? res.data : []);
+  const fetchAllData = async () => {
+    setLoading(true);
+    const categoryId = KEY_TO_ID[activeCategory];
+    const params = categoryId ? { categoryId, status: "APPROVED" } : { status: "APPROVED" };
+
+    const [trendingRes, todayRes, storiesRes] = await Promise.allSettled([
+      api.get("/api/testimonies/trending"),
+      api.get("/api/testimonies/today"),
+      api.get("/api/testimonies", { params }),
+    ]);
+
+    if (trendingRes.status === "fulfilled") {
+      setTrending(trendingRes.value.data || []);
+    }
+
+    if (todayRes.status === "fulfilled" && todayRes.value.data) {
+      setTod(todayRes.value.data);
+    } else {
+      // Fallback: fetch featured if today testimony is empty
+      api.get("/api/testimonies/featured").then((res) => {
+        if (res.data && res.data.length > 0) setTod(res.data[0]);
+      }).catch(() => {});
+    }
+
+    if (storiesRes.status === "fulfilled") {
+      const resData = storiesRes.value.data;
+      const rawList = resData.content || (Array.isArray(resData) ? resData : []);
       const approvedStories = rawList.filter(t => (!t.status || t.status === "APPROVED") && !t.isGrc);
       setStories(approvedStories);
-    } catch (err) {
-      console.error("Error fetching recent stories:", err);
-    } finally {
-      setLoading(false);
     }
+
+    setLoading(false);
   };
 
   const handleDelete = async (e, id) => {
