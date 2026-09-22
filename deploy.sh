@@ -1,5 +1,5 @@
 #!/bin/bash
-# Deployment script for Testimony Portal on 148.66.154.48:8083
+# Deployment script for Testimony Portal on testimonyportal.com
 
 echo "=== Deploying Testimony Portal ==="
 
@@ -24,4 +24,4 @@ if command -v systemctl &> /dev/null; then
 fi
 
 echo "=== Deployment Complete ==="
-echo "Access your app at: http://148.66.154.48:8083/login"
+echo "Access your app at: https://testimonyportal.com/login"

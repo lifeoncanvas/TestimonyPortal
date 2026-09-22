@@ -2,7 +2,7 @@ import axios from "axios";
 
 const apiBaseUrl = (
   process.env.REACT_APP_API_URL ||
-  (typeof window !== "undefined" && window.location.port === "8083" ? "" : "http://148.66.154.48:8083")
+  (typeof window !== "undefined" && (window.location.hostname === "testimonyportal.com" || window.location.hostname === "www.testimonyportal.com" || window.location.port === "8083") ? "" : "https://testimonyportal.com")
 ).replace(/\/$/, "");
 
 const api = axios.create({
