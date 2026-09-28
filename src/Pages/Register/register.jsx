@@ -76,7 +76,7 @@ export default function Register() {
     setError("");
     setKingschatLoading(true);
 
-    const clientId = "4e67fd93-25ee-458b-9fde-6bcf6a1c5e9a";
+    const clientId = process.env.REACT_APP_KINGSCHAT_CLIENT_ID || "7d63fc38-fbc6-46f3-969f-0ca8be14f1d1";
 
     import("kingschat-web-sdk").then(({ default: kingsChatWebSdk }) => {
       kingsChatWebSdk
