@@ -110,7 +110,7 @@ export default function Login() {
     // Bypassing kingschat-web-sdk due to 422 errors.
     // Use the standard direct redirect flow instead.
     const sessionKey = "kc-" + Date.now();
-    const loginUrl = `${KINGSCHAT_LOGIN_URL}&origin=${encodeURIComponent(sessionKey)}`;
+    const loginUrl = `${KINGSCHAT_LOGIN_URL}&origin=${encodeURIComponent(sessionKey)}&redirect_uri=https://testimonyportal.com/kingschat/callback`;
     window.location.href = loginUrl;
   };
 
