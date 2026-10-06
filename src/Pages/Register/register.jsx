@@ -73,13 +73,40 @@ export default function Register() {
   };
 
   const handleKingschatAuth = () => {
+    const clientId = process.env.REACT_APP_KINGSCHAT_CLIENT_ID || "7d63fc38-fbc6-46f3-969f-0ca8be14f1d1";
+
+    // Start the SDK login immediately to preserve the browser's user gesture
+    const loginPromise = kingsChatWebSdk.login({
+      clientId: clientId,
+      scopes: ["authenticate", "profile"]
+    });
+
     setError("");
     setKingschatLoading(true);
 
-    const clientId = process.env.REACT_APP_KINGSCHAT_CLIENT_ID || "7d63fc38-fbc6-46f3-969f-0ca8be14f1d1";
-    const sessionKey = "kc-" + Date.now();
-    const loginUrl = `https://accounts.kingschat.online/log-in?clientId=${clientId}&origin=${encodeURIComponent(sessionKey)}`;
-    window.location.href = loginUrl;
+    loginPromise
+      .then(async (authData) => {
+        try {
+          const res = await api.post("/api/auth/kingschat/token", {
+            token: authData.accessToken,
+          });
+          localStorage.setItem("token", res.data.token);
+          localStorage.setItem("user", JSON.stringify(res.data.user));
+          if (res.data.user && res.data.user.role === "ADMIN") {
+            navigate("/admin");
+          } else {
+            navigate("/profile");
+          }
+        } catch (err) {
+          setError(err.response?.data?.message || err.message || "KingsChat backend auth failed.");
+        } finally {
+          setKingschatLoading(false);
+        }
+      })
+      .catch((err) => {
+        setError("KingsChat login failed or was cancelled.");
+        setKingschatLoading(false);
+      });
   };
 
 
