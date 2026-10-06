@@ -107,10 +107,10 @@ export default function Login() {
     setError("");
     setLoading(true);
 
-    // Bypassing kingschat-web-sdk due to 422 errors.
-    // Use the standard direct redirect flow instead.
+    // KingsChat always POSTs back to the registered redirect URL (https://testimonyportal.com/)
+    // redirect_uri parameter is ignored — callback delivery is configured as Form POST in KingsChat dev portal
     const sessionKey = "kc-" + Date.now();
-    const loginUrl = `${KINGSCHAT_LOGIN_URL}&origin=${encodeURIComponent(sessionKey)}&redirect_uri=https://testimonyportal.com/kingschat/callback`;
+    const loginUrl = `${KINGSCHAT_LOGIN_URL}&origin=${encodeURIComponent(sessionKey)}`;
     window.location.href = loginUrl;
   };
 
