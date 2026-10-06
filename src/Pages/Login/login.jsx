@@ -2,10 +2,9 @@ import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router";
 import "./styles.css";
 import api from "../../services/axiosConfig";
-import kingsChatWebSdk from "kingschat-web-sdk";
-import "kingschat-web-sdk/dist/stylesheets/style.min.css";
 
 const KINGSCHAT_CLIENT_ID = process.env.REACT_APP_KINGSCHAT_CLIENT_ID || "7d63fc38-fbc6-46f3-969f-0ca8be14f1d1";
+const KINGSCHAT_LOGIN_URL = `https://accounts.kingschat.online/log-in?clientId=${KINGSCHAT_CLIENT_ID}`;
 
 export default function Login() {
   const navigate = useNavigate();
@@ -105,38 +104,12 @@ export default function Login() {
 
   // ── KingsChat login flow ──────────────────────────────────────────────────
   const handleKingschatLogin = () => {
-    // Start the SDK login immediately to preserve the browser's user gesture
-    const loginPromise = kingsChatWebSdk.login({
-      clientId: KINGSCHAT_CLIENT_ID,
-      scopes: ["authenticate", "profile"]
-    });
-
     setError("");
     setLoading(true);
 
-    loginPromise
-      .then(async (authData) => {
-        try {
-          const res = await api.post("/api/auth/kingschat/token", {
-            token: authData.accessToken,
-          });
-          localStorage.setItem("token", res.data.token);
-          localStorage.setItem("user", JSON.stringify(res.data.user));
-          if (res.data.user?.role === "ADMIN") {
-            navigate("/admin");
-          } else {
-            navigate("/");
-          }
-        } catch (err) {
-          setError(err.response?.data?.message || err.message || "KingsChat backend auth failed.");
-        } finally {
-          setLoading(false);
-        }
-      })
-      .catch((err) => {
-        setError("KingsChat login failed or was cancelled.");
-        setLoading(false);
-      });
+    const sessionKey = "kc-" + Date.now();
+    const loginUrl = `${KINGSCHAT_LOGIN_URL}&origin=${encodeURIComponent(sessionKey)}`;
+    window.location.href = loginUrl;
   };
 
   const toggleMethod = (method) => {
