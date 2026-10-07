@@ -74,9 +74,11 @@ export default function Register() {
     setError("");
     setKingschatLoading(true);
 
-    const clientId = process.env.REACT_APP_KINGSCHAT_CLIENT_ID || "ffbcd492-38f3-4964-b3f6-d4c014ff2ade";
+    const clientId = "ffbcd492-38f3-4964-b3f6-d4c014ff2ade";
     const sessionKey = "kc-" + Date.now();
-    const loginUrl = `https://accounts.kingschat.online/log-in?client_id=${clientId}&redirect_uri=https://testimonyportal.com&state=${encodeURIComponent(sessionKey)}`;
+    const redirectUri = encodeURIComponent("https://testimonyportal.com");
+    const scopes = encodeURIComponent('["profile"]');
+    const loginUrl = `https://accounts.kingschat.online/log-in?client_id=${clientId}&redirect_uri=${redirectUri}&scopes=${scopes}&state=${encodeURIComponent(sessionKey)}`;
     window.location.href = loginUrl;
   };
 
