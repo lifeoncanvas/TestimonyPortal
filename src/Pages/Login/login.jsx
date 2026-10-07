@@ -4,7 +4,7 @@ import "./styles.css";
 import api from "../../services/axiosConfig";
 
 const KINGSCHAT_CLIENT_ID = process.env.REACT_APP_KINGSCHAT_CLIENT_ID || "ffbcd492-38f3-4964-b3f6-d4c014ff2ade";
-const KINGSCHAT_LOGIN_URL = `https://accounts.kingschat.online/log-in?clientId=${KINGSCHAT_CLIENT_ID}`;
+const KINGSCHAT_LOGIN_URL = `https://accounts.kingschat.online/log-in?client_id=${KINGSCHAT_CLIENT_ID}&redirect_uri=https://testimonyportal.com`;
 
 export default function Login() {
   const navigate = useNavigate();
@@ -108,7 +108,7 @@ export default function Login() {
     setLoading(true);
 
     const sessionKey = "kc-" + Date.now();
-    const loginUrl = `${KINGSCHAT_LOGIN_URL}&origin=${encodeURIComponent(sessionKey)}`;
+    const loginUrl = `${KINGSCHAT_LOGIN_URL}&state=${encodeURIComponent(sessionKey)}`;
     window.location.href = loginUrl;
   };
 
