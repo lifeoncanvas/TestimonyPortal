@@ -44,7 +44,9 @@ function ProtectedRoute({ children, requireAdmin = false }) {
 
 
 function KingsChatCallbackHandler({ children }) {
-  const [processing, setProcessing] = useState(false);
+  const [processing, setProcessing] = useState(() => {
+    return new URLSearchParams(window.location.search).has("code");
+  });
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -56,7 +58,7 @@ function KingsChatCallbackHandler({ children }) {
 
     // Clean URL immediately
     window.history.replaceState({}, document.title, window.location.pathname);
-    setProcessing(true);
+    // setProcessing(true) is already handled by initial state
 
     api
       .post("/api/auth/kingschat/verify", { code })

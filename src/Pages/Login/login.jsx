@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router";
 import "./styles.css";
 import api from "../../services/axiosConfig";
-import kingsChatWebSdk from "kingschat-web-sdk";
 
 const KINGSCHAT_CLIENT_ID = "ffbcd492-38f3-4964-b3f6-d4c014ff2ade";
+const REDIRECT_URI = "https://testimonyportal.com";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -14,13 +14,15 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [loginMethod, setLoginMethod] = useState(null);
   const [kcStatus, setKcStatus] = useState(null); // 'polling' | 'success' | 'error'
+  const popupRef = useRef(null);
 
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
 
-  // ── Handle KingsChat callback from URL params ───────────────────────────────
+  // ── Handle KingsChat callback from URL params (code in URL) ─────────────────
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const kcError = params.get("kc_error");
+    const code = params.get("code");
     const session = params.get("session");
 
     if (kcError) {
@@ -30,6 +32,27 @@ export default function Login() {
         setError(decodeURIComponent(kcError));
       }
       navigate("/login", { replace: true });
+      return;
+    }
+
+    // Handle direct code from KingsChat redirect
+    if (code) {
+      setKcStatus("polling");
+      window.history.replaceState({}, document.title, "/login");
+      
+      api.post("/api/auth/kingschat/verify", { code })
+        .then((res) => {
+          localStorage.setItem("token", res.data.token);
+          localStorage.setItem("user", JSON.stringify(res.data.user));
+          setKcStatus("success");
+          const role = res.data.user?.role;
+          window.location.replace(role === "ADMIN" ? "/admin" : "/");
+        })
+        .catch((err) => {
+          console.error("KingsChat code exchange failed:", err);
+          setKcStatus("error");
+          setError(err.response?.data?.message || "KingsChat sign-in failed. Please try again.");
+        });
       return;
     }
 
@@ -101,49 +124,19 @@ export default function Login() {
     }
   };
 
-  // ── KingsChat SDK popup login flow ─────────────────────────────────────────
-  const handleKingschatLogin = async () => {
+  // ── KingsChat redirect-based login ─────────────────────────────────────────
+  const handleKingschatLogin = () => {
     setError("");
     setLoading(true);
 
-    try {
-      // Opens a popup window for KingsChat authorization
-      const result = await kingsChatWebSdk.login({
-        clientId: KINGSCHAT_CLIENT_ID,
-        scopes: ["profile"],
-      });
+    const scopes = encodeURIComponent('["profile"]');
+    const redirectUri = encodeURIComponent(REDIRECT_URI);
+    const authUrl = `https://accounts.kingsch.at/?client_id=${KINGSCHAT_CLIENT_ID}&redirect_uri=${redirectUri}&scopes=${scopes}`;
 
-      // result contains the access token from KingsChat
-      const accessToken = result.accessToken || result.access_token;
-
-      if (!accessToken) {
-        throw new Error("No access token received from KingsChat.");
-      }
-
-      // Send the token to our backend for verification and JWT creation
-      const res = await api.post("/api/auth/kingschat/token", {
-        token: accessToken,
-      });
-
-      localStorage.setItem("token", res.data.token);
-      localStorage.setItem("user", JSON.stringify(res.data.user));
-
-      const role = res.data.user?.role;
-      if (role === "ADMIN") {
-        navigate("/admin");
-      } else {
-        navigate("/");
-      }
-    } catch (err) {
-      console.error("KingsChat login error:", err);
-      if (err.message === "User closed window before allowing access") {
-        setError("Login cancelled. Please try again.");
-      } else {
-        setError(err.response?.data?.message || err.message || "KingsChat sign-in failed. Please try again.");
-      }
-    } finally {
-      setLoading(false);
-    }
+    // Full-page redirect to KingsChat auth
+    // After user authorizes, KingsChat redirects back to https://testimonyportal.com?code=...
+    // The KingsChatCallbackHandler in App.js (or this useEffect) will catch the code
+    window.location.href = authUrl;
   };
 
   const toggleMethod = (method) => {
