@@ -6,7 +6,7 @@ import api from "../../services/axiosConfig";
 const KINGSCHAT_CLIENT_ID = "ffbcd492-38f3-4964-b3f6-d4c014ff2ade";
 const redirectUri = encodeURIComponent("https://testimonyportal.com");
 const scopes = encodeURIComponent('["profile"]');
-const KINGSCHAT_LOGIN_URL = `https://accounts.kingschat.online/log-in?client_id=${KINGSCHAT_CLIENT_ID}&redirect_uri=${redirectUri}&scopes=${scopes}`;
+const KINGSCHAT_LOGIN_URL = `https://accounts.kingsch.at/?client_id=${KINGSCHAT_CLIENT_ID}&redirect_uri=${redirectUri}&scopes=${scopes}`;
 
 export default function Login() {
   const navigate = useNavigate();

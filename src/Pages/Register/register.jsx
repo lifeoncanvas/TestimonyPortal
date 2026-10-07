@@ -78,7 +78,7 @@ export default function Register() {
     const sessionKey = "kc-" + Date.now();
     const redirectUri = encodeURIComponent("https://testimonyportal.com");
     const scopes = encodeURIComponent('["profile"]');
-    const loginUrl = `https://accounts.kingschat.online/log-in?client_id=${clientId}&redirect_uri=${redirectUri}&scopes=${scopes}&state=${encodeURIComponent(sessionKey)}`;
+    const loginUrl = `https://accounts.kingsch.at/?client_id=${clientId}&redirect_uri=${redirectUri}&scopes=${scopes}&state=${encodeURIComponent(sessionKey)}`;
     window.location.href = loginUrl;
   };
 
