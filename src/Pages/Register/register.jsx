@@ -74,7 +74,7 @@ export default function Register() {
     setError("");
     setKingschatLoading(true);
 
-    const clientId = process.env.REACT_APP_KINGSCHAT_CLIENT_ID || "7d63fc38-fbc6-46f3-969f-0ca8be14f1d1";
+    const clientId = process.env.REACT_APP_KINGSCHAT_CLIENT_ID || "ffbcd492-38f3-4964-b3f6-d4c014ff2ade";
     const sessionKey = "kc-" + Date.now();
     const loginUrl = `https://accounts.kingschat.online/log-in?clientId=${clientId}&origin=${encodeURIComponent(sessionKey)}`;
     window.location.href = loginUrl;

@@ -289,14 +289,6 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
       setError("Please enter Country.");
       return false;
     }
-    if (!form.state.trim()) {
-      setError("Please enter State.");
-      return false;
-    }
-    if (!form.city.trim()) {
-      setError("Please enter City.");
-      return false;
-    }
     if (!form.telephoneNumber.trim()) {
       setError("Please enter Telephone Number.");
       return false;
@@ -309,51 +301,10 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
       setError("Please select Gender.");
       return false;
     }
-    if (!form.conditionProblem.trim()) {
-      setError("Please describe the Condition/Problem.");
-      return false;
-    }
-    if (!form.conditionDuration.trim()) {
-      setError("Please enter Duration of Condition/Problem.");
-      return false;
-    }
-    if (!form.unableToDoBefore.trim()) {
-      setError("Please fill out 'What could you not do before?'.");
-      return false;
-    }
-    if (!form.whatHappenedDuringProgram.trim()) {
-      setError("Please fill out 'What happened during the program?'.");
-      return false;
-    }
-    if (!form.ableToDoNow.trim()) {
-      setError("Please fill out 'What can you do now?'.");
-      return false;
-    }
-    if (!form.inviterDetails.trim()) {
-      setError("Please enter Name and Contact Details of the Person that invited you.");
-      return false;
-    }
-    if (!form.healingCentreLocation.trim()) {
-      setError("Please enter Location of Healing Centre/Crusade.");
-      return false;
-    }
     if (!form.description.trim()) {
       setError("Please write Your Testimony / Testimony Summary.");
       return false;
     }
-    if (medicalFiles.length === 0) {
-      setError("Please upload at least one Medical Report document or picture.");
-      return false;
-    }
-    if (beforeFiles.length === 0) {
-      setError("Please upload at least one 'Before' picture.");
-      return false;
-    }
-    if (afterFiles.length === 0) {
-      setError("Please upload at least one 'After' picture.");
-      return false;
-    }
-
     return true;
   };
 
@@ -639,7 +590,7 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
               />
             </div>
             <div className="mms-field">
-              <label>State <span style={{ color: "#d97706" }}>*</span></label>
+              <label>State</label>
               <input
                 placeholder="e.g. Lagos"
                 value={form.state}
@@ -647,7 +598,7 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
               />
             </div>
             <div className="mms-field">
-              <label>City <span style={{ color: "#d97706" }}>*</span></label>
+              <label>City</label>
               <input
                 placeholder="e.g. Ikeja"
                 value={form.city}
@@ -704,7 +655,7 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
 
           {/* Condition / Problem */}
           <div className="mms-field">
-            <label>Condition/Problem <span style={{ color: "#d97706" }}>*</span></label>
+            <label>Condition/Problem</label>
             <textarea
               rows={2}
               placeholder="Briefly describe the condition..."
@@ -715,7 +666,7 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
 
           {/* Duration of Condition/Problem */}
           <div className="mms-field">
-            <label>Duration of Condition/Problem <span style={{ color: "#d97706" }}>*</span></label>
+            <label>Duration of Condition/Problem</label>
             <input
               placeholder="e.g. 5 years, 6 months"
               value={form.conditionDuration}
@@ -725,7 +676,7 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
 
           {/* What could you not do before? */}
           <div className="mms-field">
-            <label>What could you not do before? <span style={{ color: "#d97706" }}>*</span></label>
+            <label>What could you not do before?</label>
             <textarea
               rows={2}
               placeholder="Describe limitations..."
@@ -736,7 +687,7 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
 
           {/* What happened during the program? */}
           <div className="mms-field">
-            <label>What happened during the program? <span style={{ color: "#d97706" }}>*</span></label>
+            <label>What happened during the program?</label>
             <textarea
               rows={3}
               placeholder="Describe the miracle..."
@@ -747,7 +698,7 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
 
           {/* What can you do now? */}
           <div className="mms-field">
-            <label>What can you do now? <span style={{ color: "#d97706" }}>*</span></label>
+            <label>What can you do now?</label>
             <textarea
               rows={2}
               placeholder="Describe your current state..."
@@ -758,7 +709,7 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
 
           {/* Person that invited you */}
           <div className="mms-field">
-            <label>Name and Contact Details of the Person that invited you <span style={{ color: "#d97706" }}>*</span></label>
+            <label>Name and Contact Details of the Person that invited you</label>
             <input
               placeholder="Details..."
               value={form.inviterDetails}
@@ -768,7 +719,7 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
 
           {/* Location of Healing Centre/Crusade */}
           <div className="mms-field">
-            <label>Location of Healing Centre/Crusade <span style={{ color: "#d97706" }}>*</span></label>
+            <label>Location of Healing Centre/Crusade</label>
             <input
               placeholder="e.g. Online, Center A"
               value={form.healingCentreLocation}
@@ -834,12 +785,12 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
               
               {/* Before Pictures Column */}
               <div className="mms-field">
-                <label style={{ fontSize: '10px', color: 'var(--cream)' }}>Before Picture(s) <span style={{ color: "#d97706" }}>*</span></label>
+                <label style={{ fontSize: '10px', color: 'var(--cream)' }}>Before Media (Pictures/Videos)</label>
                 <div className="mms-upload-box-small">
                   <input
                     type="file"
                     multiple
-                    accept="image/*"
+                    accept="image/*,video/*,audio/*"
                     onChange={(e) => addBeforeFiles(e.target.files)}
                   />
                   <Icon.Upload />
@@ -861,12 +812,12 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
 
               {/* After Pictures Column */}
               <div className="mms-field">
-                <label style={{ fontSize: '10px', color: 'var(--cream)' }}>After Picture(s) <span style={{ color: "#d97706" }}>*</span></label>
+                <label style={{ fontSize: '10px', color: 'var(--cream)' }}>After Media (Pictures/Videos/Audio)</label>
                 <div className="mms-upload-box-small">
                   <input
                     type="file"
                     multiple
-                    accept="image/*"
+                    accept="image/*,video/*,audio/*"
                     onChange={(e) => addAfterFiles(e.target.files)}
                   />
                   <Icon.Upload />

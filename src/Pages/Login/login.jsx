@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router";
 import "./styles.css";
 import api from "../../services/axiosConfig";
 
-const KINGSCHAT_CLIENT_ID = process.env.REACT_APP_KINGSCHAT_CLIENT_ID || "7d63fc38-fbc6-46f3-969f-0ca8be14f1d1";
+const KINGSCHAT_CLIENT_ID = process.env.REACT_APP_KINGSCHAT_CLIENT_ID || "ffbcd492-38f3-4964-b3f6-d4c014ff2ade";
 const KINGSCHAT_LOGIN_URL = `https://accounts.kingschat.online/log-in?clientId=${KINGSCHAT_CLIENT_ID}`;
 
 export default function Login() {

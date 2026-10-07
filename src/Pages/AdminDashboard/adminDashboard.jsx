@@ -14,6 +14,7 @@ export default function AdminDashboard() {
   const [selectedTestimony, setSelectedTestimony] = useState(null);
   const [pending, setPending] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [uploadingCsv, setUploadingCsv] = useState(false);
 
   useEffect(() => {
     fetchDashboard();
@@ -52,6 +53,26 @@ export default function AdminDashboard() {
       } : prev);
     } catch (err) {
       alert("Failed to approve: " + (err.response?.data?.message || err.message));
+    }
+  };
+
+  const handleCsvUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploadingCsv(true);
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      const res = await api.post("/api/admin/testimonies/bulk-upload", formData, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
+      alert(`Success! ${res.data.count} testimonies uploaded.`);
+      fetchDashboard();
+    } catch (err) {
+      alert("Upload failed: " + (err.response?.data?.message || err.message));
+    } finally {
+      setUploadingCsv(false);
+      e.target.value = null; // reset input
     }
   };
 
@@ -148,6 +169,24 @@ export default function AdminDashboard() {
             </div>
             <ArrowRight size={16} className="admin-action-arrow" />
           </button>
+
+          <label className="admin-action-card" style={{ cursor: "pointer", position: "relative" }}>
+            <input 
+              type="file" 
+              accept=".csv" 
+              style={{ position: "absolute", width: "100%", height: "100%", opacity: 0, cursor: "pointer" }} 
+              onChange={handleCsvUpload} 
+              disabled={uploadingCsv}
+            />
+            <div className="admin-action-icon" style={{ background: "linear-gradient(135deg, #4facfe, #00f2fe)" }}>
+              <FileText size={20} />
+            </div>
+            <div>
+              <h3>{uploadingCsv ? "Uploading..." : "Bulk Upload (CSV)"}</h3>
+              <p>Upload testimonies for zones directly from spreadsheet</p>
+            </div>
+            <ArrowRight size={16} className="admin-action-arrow" />
+          </label>
         </div>
       </section>
 
