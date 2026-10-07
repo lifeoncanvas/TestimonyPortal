@@ -2,9 +2,9 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router";
 import "./styles.css";
 import api from "../../services/axiosConfig";
+import kingschatWebSdk from "kingschat-web-sdk";
 
 const KINGSCHAT_CLIENT_ID = "ffbcd492-38f3-4964-b3f6-d4c014ff2ade";
-const REDIRECT_URI = "https://testimonyportal.com";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -14,7 +14,6 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [loginMethod, setLoginMethod] = useState(null);
   const [kcStatus, setKcStatus] = useState(null); // 'polling' | 'success' | 'error'
-  const popupRef = useRef(null);
 
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
 
@@ -125,18 +124,38 @@ export default function Login() {
   };
 
   // ── KingsChat redirect-based login ─────────────────────────────────────────
-  const handleKingschatLogin = () => {
+  const handleKingschatLogin = async () => {
     setError("");
     setLoading(true);
 
-    const scopes = encodeURIComponent('["profile"]');
-    const redirectUri = encodeURIComponent(REDIRECT_URI);
-    const authUrl = `https://accounts.kingsch.at/?client_id=${KINGSCHAT_CLIENT_ID}&redirect_uri=${redirectUri}&scopes=${scopes}`;
+    try {
+      const loginData = await kingschatWebSdk.login({
+        clientId: KINGSCHAT_CLIENT_ID,
+        scopes: ["profile"],
+      });
 
-    // Full-page redirect to KingsChat auth
-    // After user authorizes, KingsChat redirects back to https://testimonyportal.com?code=...
-    // The KingsChatCallbackHandler in App.js (or this useEffect) will catch the code
-    window.location.href = authUrl;
+      if (loginData && loginData.accessToken) {
+        const res = await api.post("/api/auth/kingschat/token", {
+          token: loginData.accessToken,
+        });
+        
+        localStorage.setItem("token", res.data.token);
+        localStorage.setItem("user", JSON.stringify(res.data.user));
+        
+        if (res.data.user?.role === "ADMIN") {
+          navigate("/admin");
+        } else {
+          navigate("/");
+        }
+      } else {
+        setError("KingsChat sign-in failed: No token received.");
+        setLoading(false);
+      }
+    } catch (err) {
+      console.error("Kingschat login error:", err);
+      setError(err.message || "KingsChat sign-in failed. Please try again.");
+      setLoading(false);
+    }
   };
 
   const toggleMethod = (method) => {
