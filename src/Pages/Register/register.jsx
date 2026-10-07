@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router";
 import "./styles.css";
 import api from "../../services/axiosConfig";
@@ -169,7 +169,7 @@ export default function Register() {
               <label>Church</label>
               <input
                 type="text"
-                placeholder="e.g. Christ Embassy Lagos"
+                placeholder="e.g. Your Church Name"
                 value={form.church}
                 onChange={(e) => set("church", e.target.value)}
                 disabled={loading}
