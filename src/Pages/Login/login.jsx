@@ -2,11 +2,9 @@ import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router";
 import "./styles.css";
 import api from "../../services/axiosConfig";
+import kingsChatWebSdk from "kingschat-web-sdk";
 
 const KINGSCHAT_CLIENT_ID = "ffbcd492-38f3-4964-b3f6-d4c014ff2ade";
-const redirectUri = encodeURIComponent("https://testimonyportal.com");
-const scopes = encodeURIComponent('["profile"]');
-const KINGSCHAT_LOGIN_URL = `https://accounts.kingsch.at/?client_id=${KINGSCHAT_CLIENT_ID}&redirect_uri=${redirectUri}&scopes=${scopes}`;
 
 export default function Login() {
   const navigate = useNavigate();
@@ -36,7 +34,6 @@ export default function Login() {
     }
 
     if (session) {
-      // Fallback polling path (used if direct JWT redirect wasn't possible)
       setKcStatus("polling");
       let attempts = 0;
       const maxAttempts = 20;
@@ -104,14 +101,49 @@ export default function Login() {
     }
   };
 
-  // ── KingsChat login flow ──────────────────────────────────────────────────
-  const handleKingschatLogin = () => {
+  // ── KingsChat SDK popup login flow ─────────────────────────────────────────
+  const handleKingschatLogin = async () => {
     setError("");
     setLoading(true);
 
-    const sessionKey = "kc-" + Date.now();
-    const loginUrl = `${KINGSCHAT_LOGIN_URL}&state=${encodeURIComponent(sessionKey)}`;
-    window.location.href = loginUrl;
+    try {
+      // Opens a popup window for KingsChat authorization
+      const result = await kingsChatWebSdk.login({
+        clientId: KINGSCHAT_CLIENT_ID,
+        scopes: ["profile"],
+      });
+
+      // result contains the access token from KingsChat
+      const accessToken = result.accessToken || result.access_token;
+
+      if (!accessToken) {
+        throw new Error("No access token received from KingsChat.");
+      }
+
+      // Send the token to our backend for verification and JWT creation
+      const res = await api.post("/api/auth/kingschat/token", {
+        token: accessToken,
+      });
+
+      localStorage.setItem("token", res.data.token);
+      localStorage.setItem("user", JSON.stringify(res.data.user));
+
+      const role = res.data.user?.role;
+      if (role === "ADMIN") {
+        navigate("/admin");
+      } else {
+        navigate("/");
+      }
+    } catch (err) {
+      console.error("KingsChat login error:", err);
+      if (err.message === "User closed window before allowing access") {
+        setError("Login cancelled. Please try again.");
+      } else {
+        setError(err.response?.data?.message || err.message || "KingsChat sign-in failed. Please try again.");
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const toggleMethod = (method) => {

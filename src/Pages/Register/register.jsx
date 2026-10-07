@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import "./styles.css";
 import api from "../../services/axiosConfig";
+import kingsChatWebSdk from "kingschat-web-sdk";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -70,16 +71,44 @@ export default function Register() {
     }
   };
 
-  const handleKingschatAuth = () => {
+  const handleKingschatAuth = async () => {
     setError("");
     setKingschatLoading(true);
 
-    const clientId = "ffbcd492-38f3-4964-b3f6-d4c014ff2ade";
-    const sessionKey = "kc-" + Date.now();
-    const redirectUri = encodeURIComponent("https://testimonyportal.com");
-    const scopes = encodeURIComponent('["profile"]');
-    const loginUrl = `https://accounts.kingsch.at/?client_id=${clientId}&redirect_uri=${redirectUri}&scopes=${scopes}&state=${encodeURIComponent(sessionKey)}`;
-    window.location.href = loginUrl;
+    try {
+      const result = await kingsChatWebSdk.login({
+        clientId: "ffbcd492-38f3-4964-b3f6-d4c014ff2ade",
+        scopes: ["profile"],
+      });
+
+      const accessToken = result.accessToken || result.access_token;
+      if (!accessToken) {
+        throw new Error("No access token received from KingsChat.");
+      }
+
+      const res = await api.post("/api/auth/kingschat/token", {
+        token: accessToken,
+      });
+
+      localStorage.setItem("token", res.data.token);
+      localStorage.setItem("user", JSON.stringify(res.data.user));
+
+      const role = res.data.user?.role;
+      if (role === "ADMIN") {
+        navigate("/admin");
+      } else {
+        navigate("/");
+      }
+    } catch (err) {
+      console.error("KingsChat register error:", err);
+      if (err.message === "User closed window before allowing access") {
+        setError("Sign-up cancelled. Please try again.");
+      } else {
+        setError(err.response?.data?.message || err.message || "KingsChat sign-up failed.");
+      }
+    } finally {
+      setKingschatLoading(false);
+    }
   };
 
 
