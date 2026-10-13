@@ -2,9 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import "./styles.css";
 import api from "../../services/axiosConfig";
-import kingschatWebSdk from "kingschat-web-sdk";
 
-const KINGSCHAT_CLIENT_ID = "ffbcd492-38f3-4964-b3f6-d4c014ff2ade";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -21,8 +19,6 @@ export default function Register() {
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-
-  const [kingschatLoading, setKingschatLoading] = useState(false);
 
   const SECURITY_QUESTIONS = [
     "What is your mother's maiden name?",
@@ -72,41 +68,6 @@ export default function Register() {
       setLoading(false);
     }
   };
-
-  const handleKingschatAuth = async () => {
-    setError("");
-    setKingschatLoading(true);
-
-    try {
-      const loginData = await kingschatWebSdk.login({
-        clientId: KINGSCHAT_CLIENT_ID,
-        scopes: ["profile"],
-      });
-
-      if (loginData && loginData.accessToken) {
-        const res = await api.post("/api/auth/kingschat/token", {
-          token: loginData.accessToken,
-        });
-        
-        localStorage.setItem("token", res.data.token);
-        localStorage.setItem("user", JSON.stringify(res.data.user));
-        
-        if (res.data.user?.role === "ADMIN") {
-          navigate("/admin");
-        } else {
-          navigate("/profile");
-        }
-      } else {
-        setError("KingsChat sign-in failed: No token received.");
-        setKingschatLoading(false);
-      }
-    } catch (err) {
-      console.error("Kingschat login error:", err);
-      setError(err.message || "KingsChat sign-in failed. Please try again.");
-      setKingschatLoading(false);
-    }
-  };
-
 
   return (
     <div className="register-page">
@@ -238,19 +199,6 @@ export default function Register() {
             {loading ? "Processing..." : "Create Account"}
           </button>
         </form>
-
-        <div className="auth-divider">
-          <span>OR</span>
-        </div>
-
-        <button
-          type="button"
-          className="kingschat-btn"
-          onClick={handleKingschatAuth}
-          disabled={kingschatLoading || loading}
-        >
-          <span className="kc-logo">💬</span> {kingschatLoading ? "Redirecting to KingsChat..." : "Register with KingsChat"}
-        </button>
 
         <p className="auth-switch">
           Already have an account?{" "}

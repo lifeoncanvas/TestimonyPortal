@@ -1,6 +1,4 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router";
-import { useEffect, useState } from "react";
-import api from "./services/axiosConfig";
 import './App.css';
 
 import Homepage from "./Pages/Homepage/homepage";
@@ -11,7 +9,6 @@ import Login from "./Pages/Login/login";
 import Register from "./Pages/Register/register";
 import ForgotPassword from "./Pages/Login/forgotPassword";
 import ResetPassword from "./Pages/Login/resetPassword";
-import KcCallbackPage from "./Pages/Login/KcCallbackPage";
 import Profile from "./Pages/Profile/profile";
 import MyTestimonies from "./Pages/MyTestimonies/myTestimonies";
 import SavedTestimonies from "./Pages/SavedTestimonies/savedTestimonies";
@@ -43,110 +40,9 @@ function ProtectedRoute({ children, requireAdmin = false }) {
 
 
 
-function KingsChatCallbackHandler({ children }) {
-  const [processing, setProcessing] = useState(() => {
-    return new URLSearchParams(window.location.search).has("code");
-  });
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get("code");
-
-    // Only act if KingsChat sent us back with ?code=
-    if (!code) return;
-
-    // Clean URL immediately
-    window.history.replaceState({}, document.title, window.location.pathname);
-    // setProcessing(true) is already handled by initial state
-
-    api
-      .post("/api/auth/kingschat/verify", { code })
-      .then((res) => {
-        localStorage.setItem("token", res.data.token);
-        localStorage.setItem("user", JSON.stringify(res.data.user));
-
-        const user = res.data.user;
-        if (user && user.role === "ADMIN") {
-          window.location.href = "/admin";
-        } else {
-          window.location.href = "/profile";
-        }
-      })
-      .catch((err) => {
-        console.error("KingsChat verification failed:", err);
-        setError(
-          err.response?.data?.message ||
-            err.response?.data ||
-            "KingsChat login failed. Please try again."
-        );
-        setProcessing(false);
-      });
-  }, []);
-
-  if (processing) {
-    return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "linear-gradient(135deg, #0a0a16 0%, #13132b 100%)",
-          color: "white",
-          fontFamily: "'Inter', sans-serif",
-          gap: "20px",
-        }}
-      >
-        <div
-          style={{
-            width: "56px",
-            height: "56px",
-            borderRadius: "50%",
-            border: "3px solid rgba(201,169,110,0.15)",
-            borderTopColor: "#c9a96e",
-            animation: "kcSpin 0.8s linear infinite",
-          }}
-        />
-        <h2 style={{ margin: 0, fontWeight: 600 }}>
-          Signing you in with KingsChat...
-        </h2>
-        <p style={{ margin: 0, color: "#9a95a8", fontSize: "14px" }}>
-          Please wait a moment
-        </p>
-        {error && (
-          <div
-            style={{
-              background: "rgba(255,80,80,0.15)",
-              border: "1px solid rgba(255,80,80,0.3)",
-              borderRadius: "10px",
-              padding: "15px 25px",
-              color: "#ff6b6b",
-              maxWidth: "400px",
-              textAlign: "center",
-            }}
-          >
-            {error}
-            <br />
-            <a href="/login" style={{ color: "#c9a96e", marginTop: "10px", display: "inline-block" }}>
-              ← Back to Login
-            </a>
-          </div>
-        )}
-        <style>{`@keyframes kcSpin { to { transform: rotate(360deg); } }`}</style>
-      </div>
-    );
-  }
-
-  return children;
-}
-
 function App() {
   return (
     <BrowserRouter>
-      <KingsChatCallbackHandler>
-
       <Routes>
         <Route path="/" element={<ProtectedRoute><Homepage /></ProtectedRoute>} />
         <Route path="/browse" element={<ProtectedRoute requireAdmin={true}><Browse /></ProtectedRoute>} />
@@ -156,7 +52,6 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="/kc-callback" element={<KcCallbackPage />} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path="/my-testimonies" element={<ProtectedRoute><MyTestimonies /></ProtectedRoute>} />
         <Route path="/saved" element={<ProtectedRoute><SavedTestimonies /></ProtectedRoute>} />
@@ -168,7 +63,6 @@ function App() {
         <Route path="/admin/users" element={<ProtectedRoute requireAdmin={true}><AdminUsers /></ProtectedRoute>} />
         <Route path="/prayers" element={<ProtectedRoute requireAdmin={true}><PrayerWall /></ProtectedRoute>} />
       </Routes>
-      </KingsChatCallbackHandler>
     </BrowserRouter>
   );
 }

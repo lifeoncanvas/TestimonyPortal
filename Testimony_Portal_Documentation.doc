@@ -101,7 +101,6 @@
 <ul>
   <li><strong>Email Login:</strong> Conventional login using email and password.</li>
   <li><strong>Phone Login (OTP):</strong> Multi-factor authentication where the user enters their phone number and receives a 6-digit verification code.</li>
-  <li><strong>KingsChat Auth:</strong> Secure OAuth integration allowing Christ Embassy members to log in instantly using their KingsChat profile.</li>
 </ul>
 
 <h3>User Workspace Features</h3>
