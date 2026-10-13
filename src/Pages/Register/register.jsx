@@ -2,9 +2,9 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import "./styles.css";
 import api from "../../services/axiosConfig";
+import kingschatWebSdk from "kingschat-web-sdk";
 
 const KINGSCHAT_CLIENT_ID = "ffbcd492-38f3-4964-b3f6-d4c014ff2ade";
-const REDIRECT_URI = "https://testimonyportal.com";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -73,15 +73,38 @@ export default function Register() {
     }
   };
 
-  const handleKingschatAuth = () => {
+  const handleKingschatAuth = async () => {
     setError("");
     setKingschatLoading(true);
 
-    const scopes = encodeURIComponent('["profile"]');
-    const redirectUri = encodeURIComponent(REDIRECT_URI);
-    const authUrl = `https://accounts.kingsch.at/?client_id=${KINGSCHAT_CLIENT_ID}&redirect_uri=${redirectUri}&scopes=${scopes}`;
+    try {
+      const loginData = await kingschatWebSdk.login({
+        clientId: KINGSCHAT_CLIENT_ID,
+        scopes: ["profile"],
+      });
 
-    window.location.href = authUrl;
+      if (loginData && loginData.accessToken) {
+        const res = await api.post("/api/auth/kingschat/token", {
+          token: loginData.accessToken,
+        });
+        
+        localStorage.setItem("token", res.data.token);
+        localStorage.setItem("user", JSON.stringify(res.data.user));
+        
+        if (res.data.user?.role === "ADMIN") {
+          navigate("/admin");
+        } else {
+          navigate("/profile");
+        }
+      } else {
+        setError("KingsChat sign-in failed: No token received.");
+        setKingschatLoading(false);
+      }
+    } catch (err) {
+      console.error("Kingschat login error:", err);
+      setError(err.message || "KingsChat sign-in failed. Please try again.");
+      setKingschatLoading(false);
+    }
   };
 
 
