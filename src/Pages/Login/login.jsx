@@ -54,7 +54,8 @@ export default function Login() {
     setLoading(true);
     const clientId = process.env.REACT_APP_KINGSCHAT_CLIENT_ID || "ffbcd492-38f3-4964-b3f6-d4c014ff2ade";
     const redirectUri = encodeURIComponent("https://testimonyportal.com");
-    const authUrl = `https://accounts.kingschat.online/log-in?clientId=${clientId}&redirectUri=${redirectUri}`;
+    const scopes = encodeURIComponent('["profile"]');
+    const authUrl = `https://accounts.kingsch.at/?client_id=${clientId}&scopes=${scopes}&redirect_uri=${redirectUri}`;
     window.location.href = authUrl;
   };
 
