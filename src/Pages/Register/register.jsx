@@ -200,6 +200,47 @@ export default function Register() {
           </button>
         </form>
 
+        <div className="auth-divider" style={{ display: "flex", alignItems: "center", margin: "20px 0", color: "#6e6b7b", fontSize: "13px" }}>
+          <div style={{ flex: 1, height: "1px", backgroundColor: "rgba(255,255,255,0.08)" }} />
+          <span style={{ padding: "0 14px", textTransform: "uppercase", letterSpacing: "1px" }}>OR</span>
+          <div style={{ flex: 1, height: "1px", backgroundColor: "rgba(255,255,255,0.08)" }} />
+        </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            const clientId = process.env.REACT_APP_KINGSCHAT_CLIENT_ID || "ffbcd492-38f3-4964-b3f6-d4c014ff2ade";
+            const redirectUri = encodeURIComponent("https://testimonyportal.com");
+            window.location.href = `https://accounts.kingschat.online/log-in?clientId=${clientId}&redirectUri=${redirectUri}`;
+          }}
+          disabled={loading}
+          style={{
+            width: "100%",
+            padding: "14px 20px",
+            background: "linear-gradient(135deg, #0084ff 0%, #0066ee 100%)",
+            color: "#fff",
+            border: "none",
+            borderRadius: "12px",
+            fontSize: "14px",
+            fontWeight: "700",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            boxShadow: "0 4px 16px rgba(0, 132, 255, 0.3)",
+            letterSpacing: "0.5px"
+          }}
+        >
+          <span style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 2C6.477 2 2 6.477 2 12C2 13.82 2.49 15.53 3.35 17L2 22L7.15 20.68C8.58 21.51 10.23 22 12 22C17.523 22 22 17.523 22 12C22 6.477 17.523 2 12 2Z" fill="#FFFFFF"/>
+              <path d="M8.5 7H10.5V11.2L13.8 7H16.3L12.5 11.8L16.5 17H14L10.5 12.3V17H8.5V7Z" fill="#0084FF"/>
+            </svg>
+            SIGN UP WITH KINGSCHAT
+          </span>
+          <span style={{ fontSize: "18px" }}>→</span>
+        </button>
+
         <p className="auth-switch">
           Already have an account?{" "}
           <span onClick={() => navigate("/login")}>Sign In</span>

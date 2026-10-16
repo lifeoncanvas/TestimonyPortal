@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import "./styles.css";
 import api from "../../services/axiosConfig";
@@ -40,6 +40,24 @@ export default function Login() {
     }
   };
 
+  // ── Handle KingsChat error or code in URL ──────────────────────────────────
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const kcError = params.get("kc_error") || params.get("error");
+    if (kcError) {
+      setError(decodeURIComponent(kcError));
+    }
+  }, []);
+
+  const handleKingschatLogin = () => {
+    setError("");
+    setLoading(true);
+    const clientId = process.env.REACT_APP_KINGSCHAT_CLIENT_ID || "ffbcd492-38f3-4964-b3f6-d4c014ff2ade";
+    const redirectUri = encodeURIComponent("https://testimonyportal.com");
+    const authUrl = `https://accounts.kingschat.online/log-in?clientId=${clientId}&redirectUri=${redirectUri}`;
+    window.location.href = authUrl;
+  };
+
   const toggleMethod = (method) => {
     setLoginMethod((prev) => (prev === method ? null : method));
   };
@@ -61,6 +79,27 @@ export default function Login() {
         )}
 
         <div style={{ display: "flex", flexDirection: "column", gap: "15px", marginTop: "20px" }}>
+          {/* ── KingsChat Sign In ── */}
+          <button
+            type="button"
+            className="kingschat-btn"
+            onClick={handleKingschatLogin}
+            disabled={loading}
+          >
+            <span style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2C6.477 2 2 6.477 2 12C2 13.82 2.49 15.53 3.35 17L2 22L7.15 20.68C8.58 21.51 10.23 22 12 22C17.523 22 22 17.523 22 12C22 6.477 17.523 2 12 2Z" fill="#FFFFFF"/>
+                <path d="M8.5 7H10.5V11.2L13.8 7H16.3L12.5 11.8L16.5 17H14L10.5 12.3V17H8.5V7Z" fill="#0084FF"/>
+              </svg>
+              SIGN IN WITH KINGSCHAT
+            </span>
+            <span style={{ fontSize: "18px" }}>→</span>
+          </button>
+
+          <div className="auth-divider">
+            <span>OR USE CREDENTIALS</span>
+          </div>
+
           {/* ── Email ── */}
           <div>
             <button

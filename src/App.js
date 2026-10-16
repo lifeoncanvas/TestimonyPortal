@@ -1,5 +1,7 @@
+import { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router";
 import './App.css';
+import api from "./services/axiosConfig";
 
 import Homepage from "./Pages/Homepage/homepage";
 import Browse from "./Pages/Browse/browse";
@@ -38,12 +40,104 @@ function ProtectedRoute({ children, requireAdmin = false }) {
   return children;
 }
 
+function KingsChatCallbackHandler({ children }) {
+  const [processing] = useState(() => {
+    const search = window.location.search;
+    return new URLSearchParams(search).has("code") || new URLSearchParams(search).has("token");
+  });
+  const [statusMessage, setStatusMessage] = useState("Connecting with KingsChat...");
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+    const token = params.get("token");
+    const kcError = params.get("error") || params.get("kc_error");
+
+    if (kcError) {
+      window.history.replaceState({}, document.title, "/login");
+      window.location.href = `/login?kc_error=${encodeURIComponent(kcError)}`;
+      return;
+    }
+
+    if (code) {
+      setStatusMessage("Verifying KingsChat account...");
+      api.post("/api/auth/kingschat/verify", {
+        code,
+        redirectUri: "https://testimonyportal.com"
+      })
+      .then(res => {
+        localStorage.setItem("token", res.data.token);
+        localStorage.setItem("user", JSON.stringify(res.data.user));
+        window.history.replaceState({}, document.title, "/");
+        const role = res.data.user?.role;
+        window.location.replace(role === "ADMIN" ? "/admin" : "/");
+      })
+      .catch(err => {
+        console.error("KingsChat verification failed:", err);
+        const msg = err.response?.data?.message || err.message || "KingsChat authentication failed.";
+        window.history.replaceState({}, document.title, "/login");
+        window.location.href = `/login?kc_error=${encodeURIComponent(msg)}`;
+      });
+      return;
+    }
+
+    if (token) {
+      setStatusMessage("Signing you in...");
+      localStorage.setItem("token", token);
+      api.get("/api/auth/me", { headers: { Authorization: `Bearer ${token}` } })
+        .then(res => {
+          localStorage.setItem("user", JSON.stringify(res.data));
+          window.history.replaceState({}, document.title, "/");
+          const role = res.data?.role;
+          window.location.replace(role === "ADMIN" ? "/admin" : "/");
+        })
+        .catch(() => {
+          window.history.replaceState({}, document.title, "/");
+          window.location.replace("/");
+        });
+      return;
+    }
+  }, []);
+
+  if (processing) {
+    return (
+      <div style={{
+        minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "radial-gradient(ellipse at 50% 20%, #171b30 0%, #0a0b14 100%)",
+        color: "#fff",
+        fontFamily: "'Outfit', sans-serif"
+      }}>
+        <div style={{
+          width: "56px",
+          height: "56px",
+          border: "4px solid rgba(0, 132, 255, 0.2)",
+          borderTop: "4px solid #0084ff",
+          borderRadius: "50%",
+          animation: "spin 0.8s linear infinite",
+          marginBottom: "24px"
+        }} />
+        <h2 style={{ fontSize: "22px", fontWeight: "700", marginBottom: "8px", letterSpacing: "0.2px" }}>
+          {statusMessage}
+        </h2>
+        <p style={{ color: "#9a95a8", fontSize: "14px", margin: 0 }}>
+          Directing you to your account...
+        </p>
+      </div>
+    );
+  }
+
+  return children;
+}
 
 function App() {
   return (
     <BrowserRouter>
-      <Routes>
+      <KingsChatCallbackHandler>
+        <Routes>
         <Route path="/" element={<ProtectedRoute><Homepage /></ProtectedRoute>} />
         <Route path="/browse" element={<ProtectedRoute requireAdmin={true}><Browse /></ProtectedRoute>} />
         <Route path="/testimony/:id" element={<ProtectedRoute><TestimonyDetails /></ProtectedRoute>} />
@@ -63,6 +157,7 @@ function App() {
         <Route path="/admin/users" element={<ProtectedRoute requireAdmin={true}><AdminUsers /></ProtectedRoute>} />
         <Route path="/prayers" element={<ProtectedRoute requireAdmin={true}><PrayerWall /></ProtectedRoute>} />
       </Routes>
+      </KingsChatCallbackHandler>
     </BrowserRouter>
   );
 }

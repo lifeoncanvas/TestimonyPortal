@@ -298,6 +298,37 @@
   padding: 0 14px;
 }
 
+/* KingsChat Login */
+.kingschat-btn {
+  width: 100%;
+  padding: 14px 20px;
+  background: linear-gradient(135deg, #0084ff 0%, #0066ee 100%);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 16px rgba(0, 132, 255, 0.3);
+  letter-spacing: 0.5px;
+}
+.kingschat-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 132, 255, 0.45);
+  background: linear-gradient(135deg, #0091ff 0%, #0070ff 100%);
+}
+.kingschat-btn:active {
+  transform: translateY(0);
+}
+.kingschat-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
+}
 
 /* Switch Switch Mode link */
 .auth-switch {
