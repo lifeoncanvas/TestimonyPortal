@@ -919,3 +919,169 @@
   .mms-format-tile-desc { font-size: 14px; }
   .mms-format-tile svg { width: 34px; height: 34px; }
 }
+
+/* ─── Testimony Media & Recording Section ──────────────────────────── */
+.mms-media-section {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px dashed var(--navy-border);
+}
+
+.mms-mode-tabs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.mms-mode-tab {
+  background: var(--navy-input);
+  border: 1px solid var(--navy-border);
+  border-radius: 12px;
+  padding: 12px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  text-align: center;
+}
+
+.mms-mode-tab:hover {
+  border-color: var(--gold-muted);
+  background: #142442;
+}
+
+.mms-mode-tab.active {
+  border-color: var(--gold);
+  background: rgba(201, 151, 58, 0.12);
+  box-shadow: 0 0 12px rgba(201, 151, 58, 0.2);
+}
+
+.mms-mode-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.mms-mode-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--cream);
+  letter-spacing: 0.02em;
+}
+
+.mms-mode-check {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: #10b981;
+  color: #fff;
+  border-radius: 50%;
+  width: 14px;
+  height: 14px;
+  font-size: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+}
+
+.mms-rec-box {
+  background: var(--navy-input);
+  border: 1px solid var(--navy-border);
+  border-radius: 16px;
+  padding: 24px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+  position: relative;
+}
+
+.mms-cam-container {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  aspect-ratio: 16/9;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #040914;
+  border: 1px solid var(--navy-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mms-cam-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+}
+
+.mms-rec-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: rgba(220, 38, 38, 0.9);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  letter-spacing: 0.05em;
+  z-index: 2;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+}
+
+@keyframes pulseRedDot {
+  0% { transform: scale(0.9); opacity: 0.6; }
+  50% { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(0.9); opacity: 0.6; }
+}
+
+.mms-rec-badge-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fff;
+  animation: pulseRedDot 1.2s infinite;
+}
+
+@keyframes liveWave {
+  0% { height: 6px; }
+  50% { height: 38px; }
+  100% { height: 10px; }
+}
+
+.mms-wave-bar.animated {
+  background: var(--gold-light);
+  animation: liveWave 0.8s ease-in-out infinite alternate;
+}
+
+.mms-recorded-preview {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.mms-recorded-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #34d399;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 999px;
+}

@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import "./styles.css";
 import api from "../../services/axiosConfig";
+import kingsChatWebSdk from "kingschat-web-sdk";
+import "kingschat-web-sdk/dist/stylesheets/style.min.css";
 
 
 export default function Register() {
@@ -67,6 +69,41 @@ export default function Register() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleKingschatSignup = () => {
+    setError("");
+    setLoading(true);
+    const loginOptions = {
+      scopes: ["authenticate", "profile"],
+      clientId: (process.env.REACT_APP_KINGSCHAT_CLIENT_ID || "ffbcd492-38f3-4964-b3f6-d4c014ff2ade").trim(),
+    };
+
+    kingsChatWebSdk.login(loginOptions)
+      .then(async (tokenResponse) => {
+        console.log("KingsChat SDK Signup Success:", tokenResponse);
+        const { accessToken, user: kcUser } = tokenResponse;
+        const res = await api.post("/api/auth/kingschat", {
+          token: accessToken,
+          email: kcUser?.email || null,
+          firstName: kcUser?.first_name || kcUser?.firstName || (kcUser?.name ? kcUser.name.split(" ")[0] : null),
+          lastName: kcUser?.last_name || kcUser?.lastName || (kcUser?.name && kcUser.name.includes(" ") ? kcUser.name.split(" ").slice(1).join(" ") : null),
+          username: kcUser?.username || null,
+        });
+
+        localStorage.setItem("token", res.data.token);
+        localStorage.setItem("user", JSON.stringify(res.data.user));
+        if (res.data.user?.role === "ADMIN") {
+          navigate("/admin");
+        } else {
+          navigate("/profile");
+        }
+      })
+      .catch((err) => {
+        console.error("KingsChat signup error:", err);
+        setLoading(false);
+        setError("KingsChat registration was cancelled or failed.");
+      });
   };
 
   return (
@@ -208,12 +245,7 @@ export default function Register() {
 
         <button
           type="button"
-          onClick={() => {
-            const clientId = process.env.REACT_APP_KINGSCHAT_CLIENT_ID || "ffbcd492-38f3-4964-b3f6-d4c014ff2ade";
-            const redirectUri = encodeURIComponent("https://testimonyportal.com");
-            const scopes = encodeURIComponent('["profile"]');
-            window.location.href = `https://accounts.kingsch.at/?client_id=${clientId}&scopes=${scopes}&redirect_uri=${redirectUri}`;
-          }}
+          onClick={handleKingschatSignup}
           disabled={loading}
           style={{
             width: "100%",

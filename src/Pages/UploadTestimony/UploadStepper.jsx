@@ -162,6 +162,52 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
   const [beforeFiles, setBeforeFiles]   = useState([]);
   const [afterFiles, setAfterFiles]     = useState([]);
 
+  // Testimony Media & Recording states
+  const [testimonyMode, setTestimonyMode] = useState("voice"); // "voice", "video", "upload", "write"
+  const [isRecordingAudio, setIsRecordingAudio] = useState(false);
+  const [audioDuration, setAudioDuration] = useState(0);
+  const [recordedAudio, setRecordedAudio] = useState(null); // { blob, url, file, duration }
+
+  const [isRecordingVideo, setIsRecordingVideo] = useState(false);
+  const [videoDuration, setVideoDuration] = useState(0);
+  const [recordedVideo, setRecordedVideo] = useState(null); // { blob, url, file, duration }
+  const [isCameraActive, setIsCameraActive] = useState(false);
+
+  const [uploadedMedia, setUploadedMedia] = useState([]); // [{ file, url, type, name, size }]
+
+  const audioRecorderRef = useRef(null);
+  const audioStreamRef = useRef(null);
+  const videoRecorderRef = useRef(null);
+  const videoStreamRef = useRef(null);
+  const liveVideoRef = useRef(null);
+
+  useEffect(() => {
+    let t;
+    if (isRecordingAudio) {
+      t = setInterval(() => setAudioDuration((d) => d + 1), 1000);
+    }
+    return () => clearInterval(t);
+  }, [isRecordingAudio]);
+
+  useEffect(() => {
+    let t;
+    if (isRecordingVideo) {
+      t = setInterval(() => setVideoDuration((d) => d + 1), 1000);
+    }
+    return () => clearInterval(t);
+  }, [isRecordingVideo]);
+
+  useEffect(() => {
+    return () => {
+      if (audioStreamRef.current) {
+        audioStreamRef.current.getTracks().forEach((track) => track.stop());
+      }
+      if (videoStreamRef.current) {
+        videoStreamRef.current.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, []);
+
   // ── Fetch categories from API on mount
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
@@ -242,6 +288,198 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
     ]);
   const removeAfterFile = (i) => setAfterFiles((p) => p.filter((_, idx) => idx !== i));
 
+  const formatDuration = (sec) => {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  };
+
+  // ── Voice Recording
+  const startAudioRecording = async () => {
+    try {
+      setError(null);
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioStreamRef.current = stream;
+
+      let options = {};
+      if (typeof MediaRecorder !== "undefined") {
+        if (MediaRecorder.isTypeSupported("audio/webm;codecs=opus")) {
+          options = { mimeType: "audio/webm;codecs=opus" };
+        } else if (MediaRecorder.isTypeSupported("audio/webm")) {
+          options = { mimeType: "audio/webm" };
+        } else if (MediaRecorder.isTypeSupported("audio/mp4")) {
+          options = { mimeType: "audio/mp4" };
+        }
+      }
+
+      const recorder = new MediaRecorder(stream, options);
+      audioRecorderRef.current = recorder;
+      const chunks = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) chunks.push(e.data);
+      };
+
+      recorder.onstop = () => {
+        const mimeType = recorder.mimeType || "audio/webm";
+        const ext = mimeType.includes("mp4") ? "mp4" : "webm";
+        const blob = new Blob(chunks, { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        const file = new File([blob], `voice_testimony_${Date.now()}.${ext}`, { type: mimeType });
+        setRecordedAudio({ blob, url, file, duration: audioDuration });
+        stream.getTracks().forEach((t) => t.stop());
+        audioStreamRef.current = null;
+      };
+
+      recorder.start(100);
+      setIsRecordingAudio(true);
+      setAudioDuration(0);
+    } catch (err) {
+      console.error("Microphone error:", err);
+      setError("Microphone permission was denied or not supported. You can upload an audio file instead.");
+    }
+  };
+
+  const stopAudioRecording = () => {
+    if (audioRecorderRef.current && isRecordingAudio) {
+      audioRecorderRef.current.stop();
+      setIsRecordingAudio(false);
+    }
+  };
+
+  const removeRecordedAudio = () => {
+    if (recordedAudio?.url) {
+      URL.revokeObjectURL(recordedAudio.url);
+    }
+    setRecordedAudio(null);
+    setAudioDuration(0);
+  };
+
+  // ── Video Recording
+  const startCameraPreview = async () => {
+    try {
+      setError(null);
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: true,
+      });
+      videoStreamRef.current = stream;
+      setIsCameraActive(true);
+      setTimeout(() => {
+        if (liveVideoRef.current) {
+          liveVideoRef.current.srcObject = stream;
+          liveVideoRef.current.play().catch(console.error);
+        }
+      }, 100);
+    } catch (err) {
+      console.error("Camera error:", err);
+      setError("Camera or microphone permission was denied. You can upload a video file instead.");
+    }
+  };
+
+  const stopCameraPreview = () => {
+    if (videoStreamRef.current) {
+      videoStreamRef.current.getTracks().forEach((t) => t.stop());
+      videoStreamRef.current = null;
+    }
+    setIsCameraActive(false);
+  };
+
+  const startVideoRecording = async () => {
+    try {
+      setError(null);
+      let stream = videoStreamRef.current;
+      if (!stream || !stream.active) {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
+          audio: true,
+        });
+        videoStreamRef.current = stream;
+        setIsCameraActive(true);
+        if (liveVideoRef.current) {
+          liveVideoRef.current.srcObject = stream;
+          liveVideoRef.current.play().catch(console.error);
+        }
+      }
+
+      let options = {};
+      if (typeof MediaRecorder !== "undefined") {
+        if (MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")) {
+          options = { mimeType: "video/webm;codecs=vp9,opus" };
+        } else if (MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")) {
+          options = { mimeType: "video/webm;codecs=vp8,opus" };
+        } else if (MediaRecorder.isTypeSupported("video/webm")) {
+          options = { mimeType: "video/webm" };
+        } else if (MediaRecorder.isTypeSupported("video/mp4")) {
+          options = { mimeType: "video/mp4" };
+        }
+      }
+
+      const recorder = new MediaRecorder(stream, options);
+      videoRecorderRef.current = recorder;
+      const chunks = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) chunks.push(e.data);
+      };
+
+      recorder.onstop = () => {
+        const mimeType = recorder.mimeType || "video/webm";
+        const ext = mimeType.includes("mp4") ? "mp4" : "webm";
+        const blob = new Blob(chunks, { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        const file = new File([blob], `video_testimony_${Date.now()}.${ext}`, { type: mimeType });
+        setRecordedVideo({ blob, url, file, duration: videoDuration });
+        stopCameraPreview();
+      };
+
+      recorder.start(100);
+      setIsRecordingVideo(true);
+      setVideoDuration(0);
+    } catch (err) {
+      console.error("Video recording error:", err);
+      setError("Could not start video recording. Please ensure camera and microphone are allowed.");
+    }
+  };
+
+  const stopVideoRecording = () => {
+    if (videoRecorderRef.current && isRecordingVideo) {
+      videoRecorderRef.current.stop();
+      setIsRecordingVideo(false);
+    }
+  };
+
+  const removeRecordedVideo = () => {
+    if (recordedVideo?.url) {
+      URL.revokeObjectURL(recordedVideo.url);
+    }
+    setRecordedVideo(null);
+    setVideoDuration(0);
+    stopCameraPreview();
+  };
+
+  // ── Upload Media Files
+  const handleUploadedMedia = (sel) => {
+    const files = Array.from(sel || []);
+    if (!files.length) return;
+    const newItems = files.map((f) => ({
+      file: f,
+      url: URL.createObjectURL(f),
+      type: f.type.startsWith("video") ? "video" : f.type.startsWith("audio") ? "audio" : "media",
+      name: f.name,
+      size: (f.size / (1024 * 1024)).toFixed(1) + " MB",
+    }));
+    setUploadedMedia((p) => [...p, ...newItems]);
+  };
+
+  const removeUploadedMedia = (i) => {
+    setUploadedMedia((p) => {
+      const item = p[i];
+      if (item?.url) URL.revokeObjectURL(item.url);
+      return p.filter((_, idx) => idx !== i);
+    });
+  };
+
   const validateRoleForm = () => {
     if (!form.fillerType) {
       setError("Please select who is filling the form.");
@@ -301,8 +539,10 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
       setError("Please select Gender.");
       return false;
     }
-    if (!form.description.trim()) {
-      setError("Please write Your Testimony / Testimony Summary.");
+
+    const hasMedia = Boolean(recordedAudio || recordedVideo || uploadedMedia.length > 0);
+    if (!form.description.trim() && !hasMedia) {
+      setError("Please write your testimony summary or record/upload an audio or video testimony.");
       return false;
     }
     return true;
@@ -316,6 +556,12 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
     try {
       let id = testimonyId;
       let finalDescription = form.description.trim();
+      if (!finalDescription) {
+        if (recordedVideo) finalDescription = "Recorded Video Testimony";
+        else if (recordedAudio) finalDescription = "Recorded Voice Note Testimony";
+        else if (uploadedMedia.length > 0) finalDescription = "Uploaded Media Testimony (Video/Audio)";
+        else finalDescription = "Testimony shared via Testimony Portal";
+      }
 
       const fullName = form.fillerType === "Zonal Manager"
         ? form.testifierName.trim()
@@ -326,8 +572,8 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
         description: finalDescription,
         categoryId:  Number(form.categoryId),
         country:     form.country,
-        state:       form.state,
-        city:        form.city,
+        state:       form.state || "",
+        city:        form.city || "",
         fullName:    fullName,
         telephoneNumber: form.telephoneNumber,
         email:       form.email,
@@ -338,8 +584,8 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
         unableToDoBefore: form.unableToDoBefore,
         whatHappenedDuringProgram: form.whatHappenedDuringProgram,
         ableToDoNow: form.ableToDoNow,
-        inviterOrNextOfKinDetails: form.inviterDetails,
-        healingCentreLocation: form.healingCentreLocation,
+        inviterOrNextOfKinDetails: form.inviterDetails || "",
+        healingCentreLocation: form.healingCentreLocation || "",
         zone: form.fillerType === "Zonal Manager" ? form.zone : "",
         fillerType: form.fillerType,
         fillerOther: form.fillerOther,
@@ -367,7 +613,15 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
     setError(null);
     setSubmitting(true);
     try {
-      const allFiles = [...medicalFiles, ...beforeFiles, ...afterFiles];
+      const allFiles = [
+        ...medicalFiles,
+        ...beforeFiles,
+        ...afterFiles,
+        ...(recordedAudio ? [{ file: recordedAudio.file }] : []),
+        ...(recordedVideo ? [{ file: recordedVideo.file }] : []),
+        ...uploadedMedia.map((m) => ({ file: m.file })),
+      ];
+
       for (let i = 0; i < allFiles.length; i++) {
         const fd = new FormData();
         fd.append("file", allFiles[i].file);
@@ -590,17 +844,17 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
               />
             </div>
             <div className="mms-field">
-              <label>State</label>
+              <label>State <span style={{ color: "var(--cream-muted)", fontSize: "11px", fontWeight: "normal", textTransform: "none" }}>(Optional)</span></label>
               <input
-                placeholder="e.g. Lagos"
+                placeholder="e.g. Lagos (Optional)"
                 value={form.state}
                 onChange={(e) => set("state", e.target.value)}
               />
             </div>
             <div className="mms-field">
-              <label>City</label>
+              <label>City <span style={{ color: "var(--cream-muted)", fontSize: "11px", fontWeight: "normal", textTransform: "none" }}>(Optional)</span></label>
               <input
-                placeholder="e.g. Ikeja"
+                placeholder="e.g. Ikeja (Optional)"
                 value={form.city}
                 onChange={(e) => set("city", e.target.value)}
               />
@@ -709,9 +963,9 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
 
           {/* Person that invited you */}
           <div className="mms-field">
-            <label>Name and Contact Details of the Person that invited you</label>
+            <label>Name and Contact Details of the Person that invited you <span style={{ color: "var(--cream-muted)", fontSize: "11px", fontWeight: "normal", textTransform: "none" }}>(Optional)</span></label>
             <input
-              placeholder="Details..."
+              placeholder="e.g. Pastor John (+234...) (Optional)"
               value={form.inviterDetails}
               onChange={(e) => set("inviterDetails", e.target.value)}
             />
@@ -719,20 +973,327 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
 
           {/* Location of Healing Centre/Crusade */}
           <div className="mms-field">
-            <label>Location of Healing Centre/Crusade</label>
+            <label>Location of Healing Centre/Crusade <span style={{ color: "var(--cream-muted)", fontSize: "11px", fontWeight: "normal", textTransform: "none" }}>(Optional)</span></label>
             <input
-              placeholder="e.g. Online, Center A"
+              placeholder="e.g. Online, Centre A, Crusade Venue (Optional)"
               value={form.healingCentreLocation}
               onChange={(e) => set("healingCentreLocation", e.target.value)}
             />
           </div>
 
-          {/* Required Testimony Summary field BEFORE Medical Reports */}
-          <div className="mms-field" style={{ marginTop: '20px' }}>
-            <label>Your Testimony / Testimony Summary <span style={{ color: "#d97706" }}>*</span></label>
+          {/* ── Testimony Media Presentation: Voice, Video, Upload, or Text ── */}
+          <div className="mms-media-section">
+            <div style={{ marginBottom: "16px" }}>
+              <span className="mms-step-eyebrow" style={{ color: "var(--gold)" }}>Testimony Media</span>
+              <h3 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "1.45rem", color: "var(--white)", fontWeight: 400, margin: "2px 0 4px" }}>
+                How would you like to share your testimony?
+              </h3>
+              <p style={{ fontSize: "12px", color: "var(--cream-muted)" }}>
+                You can record a voice note, record a video, upload existing media, or write your story.
+              </p>
+            </div>
+
+            {/* Mode selection tabs */}
+            <div className="mms-mode-tabs">
+              <button
+                type="button"
+                className={`mms-mode-tab${testimonyMode === "voice" ? " active" : ""}`}
+                onClick={() => setTestimonyMode("voice")}
+              >
+                {recordedAudio && <span className="mms-mode-check">✓</span>}
+                <span className="mms-mode-icon">🎙️</span>
+                <span className="mms-mode-title">Voice Note</span>
+              </button>
+
+              <button
+                type="button"
+                className={`mms-mode-tab${testimonyMode === "video" ? " active" : ""}`}
+                onClick={() => setTestimonyMode("video")}
+              >
+                {recordedVideo && <span className="mms-mode-check">✓</span>}
+                <span className="mms-mode-icon">📹</span>
+                <span className="mms-mode-title">Record Video</span>
+              </button>
+
+              <button
+                type="button"
+                className={`mms-mode-tab${testimonyMode === "upload" ? " active" : ""}`}
+                onClick={() => setTestimonyMode("upload")}
+              >
+                {uploadedMedia.length > 0 && <span className="mms-mode-check">✓</span>}
+                <span className="mms-mode-icon">📁</span>
+                <span className="mms-mode-title">Upload Video/Audio</span>
+              </button>
+
+              <button
+                type="button"
+                className={`mms-mode-tab${testimonyMode === "write" ? " active" : ""}`}
+                onClick={() => setTestimonyMode("write")}
+              >
+                {form.description.trim() && <span className="mms-mode-check">✓</span>}
+                <span className="mms-mode-icon">✍️</span>
+                <span className="mms-mode-title">Written Story</span>
+              </button>
+            </div>
+
+            {/* Active Tab Panel */}
+            {testimonyMode === "voice" && (
+              <div className="mms-rec-box">
+                {recordedAudio ? (
+                  <div className="mms-recorded-preview">
+                    <span className="mms-recorded-chip">
+                      <span>✓</span> Voice Note Recorded ({formatDuration(recordedAudio.duration)})
+                    </span>
+                    <audio controls src={recordedAudio.url} style={{ width: "100%", maxWidth: "420px" }} />
+                    <button
+                      type="button"
+                      className="mms-redo-btn"
+                      onClick={removeRecordedAudio}
+                    >
+                      Delete & Re-record Voice Note
+                    </button>
+                  </div>
+                ) : isRecordingAudio ? (
+                  <div className="mms-record-area" style={{ width: "100%" }}>
+                    <div className="mms-rec-timer live">
+                      ● REC {formatDuration(audioDuration)}
+                    </div>
+                    {/* Animated waveform bars */}
+                    <div className="mms-waveform">
+                      {Array.from({ length: 28 }).map((_, i) => (
+                        <div
+                          key={i}
+                          className="mms-wave-bar live animated"
+                          style={{
+                            animationDelay: `${(i % 7) * 0.12}s`,
+                            animationDuration: `${0.6 + ((i % 5) * 0.1)}s`,
+                          }}
+                        />
+                      ))}
+                    </div>
+                    <div className="mms-rec-btn-wrap">
+                      <button
+                        type="button"
+                        className="mms-rec-btn live"
+                        onClick={stopAudioRecording}
+                        aria-label="Stop Voice Recording"
+                      >
+                        <div className="mms-rec-dot" style={{ borderRadius: "4px", width: "20px", height: "20px" }} />
+                      </button>
+                      <span className="mms-rec-hint" style={{ color: "var(--gold-light)" }}>
+                        Recording in progress... Tap to finish
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mms-record-area" style={{ width: "100%" }}>
+                    <div className="mms-waveform" style={{ opacity: 0.4 }}>
+                      {Array.from({ length: 28 }).map((_, i) => (
+                        <div key={i} className="mms-wave-bar" style={{ height: "10px" }} />
+                      ))}
+                    </div>
+                    <div className="mms-rec-btn-wrap">
+                      <button
+                        type="button"
+                        className="mms-rec-btn"
+                        onClick={startAudioRecording}
+                        aria-label="Start Voice Recording"
+                      >
+                        <div className="mms-rec-dot" />
+                      </button>
+                      <span className="mms-rec-hint">
+                        Tap the red button to record your voice note
+                      </span>
+                      <p className="mms-perm-tip">
+                        Speak clearly into your microphone. No typing required!
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {testimonyMode === "video" && (
+              <div className="mms-rec-box">
+                {recordedVideo ? (
+                  <div className="mms-recorded-preview">
+                    <span className="mms-recorded-chip">
+                      <span>✓</span> Video Testimony Recorded ({formatDuration(recordedVideo.duration)})
+                    </span>
+                    <video
+                      controls
+                      playsInline
+                      src={recordedVideo.url}
+                      style={{ width: "100%", maxWidth: "480px", borderRadius: "12px", background: "#000" }}
+                    />
+                    <button
+                      type="button"
+                      className="mms-redo-btn"
+                      onClick={removeRecordedVideo}
+                    >
+                      Delete & Re-record Video
+                    </button>
+                  </div>
+                ) : (
+                  <div className="mms-record-area" style={{ width: "100%" }}>
+                    <div className="mms-cam-container">
+                      <video
+                        ref={liveVideoRef}
+                        autoPlay
+                        playsInline
+                        muted
+                        className="mms-cam-preview"
+                        style={{ display: isCameraActive ? "block" : "none" }}
+                      />
+                      {!isCameraActive && (
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px", padding: "20px" }}>
+                          <span style={{ fontSize: "36px" }}>📹</span>
+                          <span style={{ fontSize: "12px", color: "var(--cream-muted)" }}>Camera viewfinder</span>
+                        </div>
+                      )}
+                      {isRecordingVideo && (
+                        <div className="mms-rec-badge">
+                          <div className="mms-rec-badge-dot" />
+                          <span>REC {formatDuration(videoDuration)}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="mms-rec-btn-wrap">
+                      {isRecordingVideo ? (
+                        <>
+                          <button
+                            type="button"
+                            className="mms-rec-btn live"
+                            onClick={stopVideoRecording}
+                            aria-label="Stop Video Recording"
+                          >
+                            <div className="mms-rec-dot" style={{ borderRadius: "4px", width: "20px", height: "20px" }} />
+                          </button>
+                          <span className="mms-rec-hint" style={{ color: "var(--gold-light)" }}>
+                            Recording your video... Tap to stop
+                          </span>
+                        </>
+                      ) : isCameraActive ? (
+                        <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap", justifyContent: "center" }}>
+                          <button
+                            type="button"
+                            className="mms-btn-primary"
+                            onClick={startVideoRecording}
+                            style={{ padding: "10px 22px", fontSize: "13px", display: "inline-flex", alignItems: "center", gap: "8px" }}
+                          >
+                            <span style={{ color: "#ef4444" }}>●</span> Start Recording
+                          </button>
+                          <button
+                            type="button"
+                            className="mms-redo-btn"
+                            onClick={stopCameraPreview}
+                          >
+                            Cancel Camera
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            className="mms-btn-primary"
+                            onClick={startCameraPreview}
+                            style={{ padding: "12px 24px", fontSize: "13px" }}
+                          >
+                            Turn on Camera
+                          </button>
+                          <span className="mms-rec-hint">
+                            Position yourself in good lighting and tap start when ready
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {testimonyMode === "upload" && (
+              <div className="mms-rec-box">
+                <div className="mms-upload-box" style={{ width: "100%", padding: "28px 16px" }}>
+                  <input
+                    type="file"
+                    multiple
+                    accept="video/*,audio/*"
+                    onChange={(e) => handleUploadedMedia(e.target.files)}
+                  />
+                  <Icon.Upload />
+                  <h4>Upload Video or Audio Testimony</h4>
+                  <p>Choose an MP4, MOV, WEBM, MP3, M4A, or WAV file from your device</p>
+                </div>
+
+                {uploadedMedia.length > 0 && (
+                  <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: "12px" }}>
+                    {uploadedMedia.map((m, idx) => (
+                      <div
+                        key={idx}
+                        style={{
+                          background: "var(--navy-card)",
+                          border: "1px solid var(--navy-border)",
+                          borderRadius: "10px",
+                          padding: "12px",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "8px",
+                          position: "relative",
+                        }}
+                      >
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <span style={{ fontSize: "12px", fontWeight: "600", color: "var(--cream)" }}>
+                            {m.type === "video" ? "📹" : "🎙️"} {m.name} ({m.size})
+                          </span>
+                          <button
+                            type="button"
+                            className="mms-file-chip-remove"
+                            onClick={() => removeUploadedMedia(idx)}
+                            style={{ background: "transparent", border: "none", color: "#e05555", cursor: "pointer", fontSize: "16px" }}
+                          >
+                            ×
+                          </button>
+                        </div>
+                        {m.type === "video" ? (
+                          <video controls playsInline src={m.url} style={{ width: "100%", maxHeight: "200px", borderRadius: "8px", background: "#000" }} />
+                        ) : (
+                          <audio controls src={m.url} style={{ width: "100%" }} />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {testimonyMode === "write" && (
+              <div style={{ background: "var(--navy-input)", border: "1px solid var(--navy-border)", borderRadius: "12px", padding: "14px 16px", marginBottom: "6px" }}>
+                <p style={{ fontSize: "12px", color: "var(--cream-muted)", lineHeight: 1.6 }}>
+                  ✍️ Write down the details of your miracle below in your own words. If you also wish to add a voice recording or video, select the tabs above anytime.
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Testimony Summary field (Optional if audio/video recorded/uploaded) */}
+          <div className="mms-field" style={{ marginTop: '22px' }}>
+            <label>
+              Your Testimony / Written Summary{" "}
+              {recordedAudio || recordedVideo || uploadedMedia.length > 0 ? (
+                <span style={{ color: "var(--cream-muted)", fontSize: "11px", fontWeight: "normal", textTransform: "none" }}>(Optional - Audio/Video attached)</span>
+              ) : (
+                <span style={{ color: "#d97706" }}>*</span>
+              )}
+            </label>
             <textarea
-              rows={5}
-              placeholder="Write your testimony in your own words..."
+              rows={4}
+              placeholder={
+                recordedAudio || recordedVideo || uploadedMedia.length > 0
+                  ? "Add any optional notes, scripture, or written summary..."
+                  : "Write your testimony in your own words..."
+              }
               value={form.description}
               onChange={(e) => set("description", e.target.value)}
               maxLength={2000}
@@ -869,19 +1430,74 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
             ) : (
               <p><strong>Name:</strong> {form.firstName} {form.lastName}</p>
             )}
-            <p><strong>Location:</strong> {form.state}, {form.country} ({form.healingCentreLocation})</p>
+            <p><strong>Location:</strong> {[form.city, form.state, form.country].filter(Boolean).join(", ") || "Not specified"} {form.healingCentreLocation ? `(${form.healingCentreLocation})` : ''}</p>
             <p><strong>Contact:</strong> {form.telephoneNumber} {form.email ? `| ${form.email}` : ''}</p>
             <p><strong>Age / Gender:</strong> {form.age} yrs | {form.gender}</p>
           </div>
 
           <div style={{ marginBottom: '16px' }}>
             <h4 style={{ color: 'var(--gold-light)', fontSize: '13px', marginBottom: '6px' }}>Condition / Miracle Details</h4>
-            <p className="mms-preview-story"><strong>Condition:</strong> {form.conditionProblem} ({form.conditionDuration})</p>
-            <p className="mms-preview-story"><strong>Unable to do before:</strong> {form.unableToDoBefore}</p>
-            <p className="mms-preview-story"><strong>What happened during program:</strong> {form.whatHappenedDuringProgram}</p>
-            <p className="mms-preview-story"><strong>Able to do now:</strong> {form.ableToDoNow}</p>
-            <p className="mms-preview-story"><strong>Invited by:</strong> {form.inviterDetails}</p>
+            <p className="mms-preview-story"><strong>Condition:</strong> {form.conditionProblem || "Not specified"} {form.conditionDuration ? `(${form.conditionDuration})` : ''}</p>
+            {form.unableToDoBefore && <p className="mms-preview-story"><strong>Unable to do before:</strong> {form.unableToDoBefore}</p>}
+            {form.whatHappenedDuringProgram && <p className="mms-preview-story"><strong>What happened during program:</strong> {form.whatHappenedDuringProgram}</p>}
+            {form.ableToDoNow && <p className="mms-preview-story"><strong>Able to do now:</strong> {form.ableToDoNow}</p>}
+            {form.inviterDetails && <p className="mms-preview-story"><strong>Invited by:</strong> {form.inviterDetails}</p>}
+            {form.healingCentreLocation && <p className="mms-preview-story"><strong>Healing Centre / Crusade:</strong> {form.healingCentreLocation}</p>}
+            {form.description && (
+              <div style={{ marginTop: "10px", padding: "10px", background: "var(--navy-card)", borderRadius: "8px" }}>
+                <strong style={{ color: "var(--gold-light)", fontSize: "11px", display: "block", marginBottom: "4px" }}>Written Summary:</strong>
+                <p style={{ fontSize: "13px", lineHeight: "1.6", whiteSpace: "pre-line" }}>{form.description}</p>
+              </div>
+            )}
           </div>
+
+          {/* Recorded Video Testimony Preview */}
+          {recordedVideo && (
+            <div style={{ marginBottom: '16px' }}>
+              <h4 style={{ color: 'var(--gold-light)', fontSize: '13px', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span>📹</span> Recorded Video Testimony ({formatDuration(recordedVideo.duration)})
+              </h4>
+              <video
+                controls
+                playsInline
+                src={recordedVideo.url}
+                style={{ width: '100%', maxHeight: '300px', borderRadius: '10px', background: '#000' }}
+              />
+            </div>
+          )}
+
+          {/* Recorded Voice Note Preview */}
+          {recordedAudio && (
+            <div style={{ marginBottom: '16px' }}>
+              <h4 style={{ color: 'var(--gold-light)', fontSize: '13px', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span>🎙️</span> Recorded Voice Note ({formatDuration(recordedAudio.duration)})
+              </h4>
+              <audio controls src={recordedAudio.url} style={{ width: '100%' }} />
+            </div>
+          )}
+
+          {/* Uploaded Media (Video/Audio) Preview */}
+          {uploadedMedia.length > 0 && (
+            <div style={{ marginBottom: '16px' }}>
+              <h4 style={{ color: 'var(--gold-light)', fontSize: '13px', marginBottom: '8px' }}>
+                Attached Media Files ({uploadedMedia.length})
+              </h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {uploadedMedia.map((m, idx) => (
+                  <div key={idx} style={{ background: 'var(--navy-input)', padding: '10px', borderRadius: '8px' }}>
+                    <span style={{ fontSize: '11px', color: 'var(--cream-muted)', display: 'block', marginBottom: '4px' }}>
+                      {m.type === 'video' ? '📹 Video' : '🎙️ Audio'}: {m.name} ({m.size})
+                    </span>
+                    {m.type === 'video' ? (
+                      <video controls playsInline src={m.url} style={{ width: '100%', maxHeight: '220px', borderRadius: '8px', background: '#000' }} />
+                    ) : (
+                      <audio controls src={m.url} style={{ width: '100%' }} />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Medical reports attached preview */}
           {medicalFiles.length > 0 && (
@@ -982,6 +1598,9 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
                   setMedicalFiles([]);
                   setBeforeFiles([]);
                   setAfterFiles([]);
+                  removeRecordedAudio();
+                  removeRecordedVideo();
+                  setUploadedMedia([]);
                 }}
                 style={{ padding: "10px 20px", fontSize: "14px" }}
               >
