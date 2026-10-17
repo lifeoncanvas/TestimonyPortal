@@ -154,6 +154,7 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
     ableToDoNow: "",
     inviterDetails: "",
     healingCentreLocation: "",
+    customCategory: "",
     description: "",
   });
 
@@ -243,6 +244,7 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
             ableToDoNow: t.ableToDoNow || "",
             inviterDetails: t.inviterOrNextOfKinDetails || "",
             healingCentreLocation: t.healingCentreLocation || "",
+            customCategory: t.customCategory || "",
             description: t.description || "",
           });
         })
@@ -266,6 +268,13 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
   const steps = stepsFor();
   const PREVIEW = S.PREVIEW;
   const DONE    = S.DONE;
+
+  const selectedCategory = categories.find((c) => String(c.id) === String(form.categoryId));
+  const catName = (selectedCategory?.name || "").toLowerCase();
+  const isHealing = catName.includes("healing") || catName.includes("stream");
+  const isPartnership = catName.includes("partnership");
+  const isCrusade = catName.includes("crusade");
+  const isOther = catName.includes("other");
 
   const addMedicalFiles = (sel) =>
     setMedicalFiles((p) => [
@@ -523,6 +532,10 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
       setError("Please select a Category.");
       return false;
     }
+    if (isOther && !form.customCategory.trim()) {
+      setError("Please specify your category / testimony theme under Others.");
+      return false;
+    }
     if (!form.country.trim()) {
       setError("Please enter Country.");
       return false;
@@ -589,6 +602,7 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
         zone: form.fillerType === "Zonal Manager" ? form.zone : "",
         fillerType: form.fillerType,
         fillerOther: form.fillerOther,
+        customCategory: form.customCategory || "",
       };
       
       if (editId) {
@@ -648,10 +662,6 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
     setError(null);
     setStep((s) => s - 1);
   };
-
-  const selectedCategory = categories.find(
-    (c) => String(c.id) === String(form.categoryId)
-  );
 
   const connFill = steps.slice(0, -1).map((_, i) => step > i);
 
@@ -833,6 +843,42 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
             </select>
           </div>
 
+          {/* When 'Others' is selected: Open field to state their category / testimony title */}
+          {isOther && (
+            <div className="mms-field" style={{
+              background: "rgba(217, 119, 6, 0.08)",
+              border: "1px solid rgba(217, 119, 6, 0.35)",
+              borderRadius: "10px",
+              padding: "16px",
+              marginTop: "-4px",
+              marginBottom: "16px",
+            }}>
+              <label style={{ color: "var(--gold-light)", fontWeight: "600", fontSize: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
+                <span>✨</span> Specify Your Category / Testimony Theme <span style={{ color: "#d97706" }}>*</span>
+              </label>
+              <input
+                placeholder="e.g. Financial Miracle, Salvation, Academic Excellence, Job Promotion, Miracle Child..."
+                value={form.customCategory}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  set("customCategory", val);
+                  if (!form.title || form.title.startsWith("Testimony: ")) {
+                    set("title", val ? `Testimony: ${val}` : "");
+                  }
+                }}
+                style={{
+                  background: "var(--navy-card)",
+                  borderColor: "var(--gold)",
+                  color: "var(--white)",
+                  fontWeight: "500",
+                }}
+              />
+              <p style={{ fontSize: "11px", color: "var(--cream-muted)", marginTop: "6px", marginBottom: 0 }}>
+                Since you selected &quot;Others&quot;, please specify what type or topic of testimony you are sharing.
+              </p>
+            </div>
+          )}
+
           {/* Country, State, City */}
           <div className="mms-row-3">
             <div className="mms-field">
@@ -873,10 +919,10 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
 
           {/* Email Address */}
           <div className="mms-field">
-            <label>Email address</label>
+            <label>Email address <span style={{ color: "var(--cream-muted)", fontSize: "11px", fontWeight: "normal", textTransform: "none" }}>(Optional)</span></label>
             <input
               type="email"
-              placeholder="e.g. john@example.com"
+              placeholder="e.g. john@example.com (Optional)"
               value={form.email}
               onChange={(e) => set("email", e.target.value)}
             />
@@ -907,12 +953,15 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
             </div>
           </div>
 
-          {/* Condition / Problem */}
+          {/* Condition / Problem or Previous Situation */}
           <div className="mms-field">
-            <label>Condition/Problem</label>
+            <label>
+              {isHealing ? "Condition / Problem" : isPartnership ? "Challenge or Financial / Project Goal Before" : "Previous Situation or Challenge"}{" "}
+              <span style={{ color: "var(--cream-muted)", fontSize: "11px", fontWeight: "normal", textTransform: "none" }}>(Optional)</span>
+            </label>
             <textarea
               rows={2}
-              placeholder="Briefly describe the condition..."
+              placeholder={isHealing ? "Briefly describe the condition..." : isPartnership ? "Describe the challenge, project, or financial goal..." : "Briefly describe the situation or challenge..."}
               value={form.conditionProblem}
               onChange={(e) => set("conditionProblem", e.target.value)}
             />
@@ -920,7 +969,10 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
 
           {/* Duration of Condition/Problem */}
           <div className="mms-field">
-            <label>Duration of Condition/Problem</label>
+            <label>
+              {isHealing ? "Duration of Condition/Problem" : "Duration of Situation / Challenge"}{" "}
+              <span style={{ color: "var(--cream-muted)", fontSize: "11px", fontWeight: "normal", textTransform: "none" }}>(Optional)</span>
+            </label>
             <input
               placeholder="e.g. 5 years, 6 months"
               value={form.conditionDuration}
@@ -928,12 +980,15 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
             />
           </div>
 
-          {/* What could you not do before? */}
+          {/* What could you not do before? (Physical limitations or obstacles) */}
           <div className="mms-field">
-            <label>What could you not do before?</label>
+            <label>
+              {isHealing ? "What could you not do before?" : "Difficulties or Limitations Faced Before"}{" "}
+              <span style={{ color: "var(--cream-muted)", fontSize: "11px", fontWeight: "normal", textTransform: "none" }}>(Optional)</span>
+            </label>
             <textarea
               rows={2}
-              placeholder="Describe limitations..."
+              placeholder={isHealing ? "Describe physical limitations..." : "Describe difficulties or limitations experienced..."}
               value={form.unableToDoBefore}
               onChange={(e) => set("unableToDoBefore", e.target.value)}
             />
@@ -941,10 +996,13 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
 
           {/* What happened during the program? */}
           <div className="mms-field">
-            <label>What happened during the program?</label>
+            <label>
+              {isHealing ? "What happened during the program / prayer?" : isPartnership ? "What happened through your partnership / outreach?" : "What happened? (e.g. during prayer, reading, or program)"}{" "}
+              <span style={{ color: "var(--cream-muted)", fontSize: "11px", fontWeight: "normal", textTransform: "none" }}>(Optional)</span>
+            </label>
             <textarea
               rows={3}
-              placeholder="Describe the miracle..."
+              placeholder={isHealing ? "Describe the healing miracle..." : isPartnership ? "Describe the miracle breakthrough..." : "Describe how God intervened..."}
               value={form.whatHappenedDuringProgram}
               onChange={(e) => set("whatHappenedDuringProgram", e.target.value)}
             />
@@ -952,10 +1010,13 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
 
           {/* What can you do now? */}
           <div className="mms-field">
-            <label>What can you do now?</label>
+            <label>
+              {isHealing ? "What can you do now?" : "Current Outcome / Breakthrough"}{" "}
+              <span style={{ color: "var(--cream-muted)", fontSize: "11px", fontWeight: "normal", textTransform: "none" }}>(Optional)</span>
+            </label>
             <textarea
               rows={2}
-              placeholder="Describe your current state..."
+              placeholder={isHealing ? "Describe what you can do now after healing..." : "Describe the breakthrough, victory, or current outcome..."}
               value={form.ableToDoNow}
               onChange={(e) => set("ableToDoNow", e.target.value)}
             />
@@ -973,9 +1034,12 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
 
           {/* Location of Healing Centre/Crusade */}
           <div className="mms-field">
-            <label>Location of Healing Centre/Crusade <span style={{ color: "var(--cream-muted)", fontSize: "11px", fontWeight: "normal", textTransform: "none" }}>(Optional)</span></label>
+            <label>
+              {isHealing || isCrusade ? "Location of Healing Centre/Crusade" : "Location of Centre / Outreach / Event"}{" "}
+              <span style={{ color: "var(--cream-muted)", fontSize: "11px", fontWeight: "normal", textTransform: "none" }}>(Optional)</span>
+            </label>
             <input
-              placeholder="e.g. Online, Centre A, Crusade Venue (Optional)"
+              placeholder={isHealing || isCrusade ? "e.g. Online, Centre A, Crusade Venue (Optional)" : "e.g. Online, Church, Outreach Venue (Optional)"}
               value={form.healingCentreLocation}
               onChange={(e) => set("healingCentreLocation", e.target.value)}
             />
@@ -1303,13 +1367,14 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
             </div>
           </div>
 
-          {/* Medical Reports Upload (Required) */}
+          {/* Medical Reports Upload (Optional) */}
           <div className="mms-field" style={{ marginTop: '22px', paddingTop: '16px', borderTop: '1px dashed var(--navy-border)' }}>
             <label style={{ color: 'var(--gold-light)', fontSize: '11px', fontWeight: '700' }}>
-              Medical Reports <span style={{ color: "#d97706" }}>*</span>
+              {isHealing ? "Medical Reports & Documents" : "Supporting Documents & Files"}{" "}
+              <span style={{ color: "var(--cream-muted)", fontSize: "11px", fontWeight: "normal", textTransform: "none" }}>(Optional)</span>
             </label>
             <p style={{ fontSize: '11px', color: 'var(--cream-muted)', marginBottom: '8px' }}>
-              Separate upload for documents and pictures of the medical report
+              {isHealing ? "Separate upload for documents and pictures of the medical report" : "Upload any documents, certificates, receipts, or letters of testimony"}
             </p>
             <div className="mms-upload-box-small">
               <input
@@ -1319,7 +1384,7 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
                 onChange={(e) => addMedicalFiles(e.target.files)}
               />
               <Icon.Plus />
-              <h5>Upload Medical Reports & Documents</h5>
+              <h5>{isHealing ? "Upload Medical Reports & Documents" : "Upload Supporting Documents"}</h5>
               <p>Images, PDFs, Word documents (Multiple allowed)</p>
             </div>
             {medicalFiles.length > 0 && (
@@ -1334,19 +1399,20 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
             )}
           </div>
 
-          {/* Before & After Pictures Upload (Required) */}
+          {/* Before & After Pictures Upload (Optional) */}
           <div className="mms-field" style={{ marginTop: '22px', paddingTop: '16px', borderTop: '1px dashed var(--navy-border)' }}>
             <label style={{ color: 'var(--gold-light)', fontSize: '11px', fontWeight: '700' }}>
-              Before & After Pictures <span style={{ color: "#d97706" }}>*</span>
+              {isHealing ? "Before & After Pictures" : "Testimony Photos & Media"}{" "}
+              <span style={{ color: "var(--cream-muted)", fontSize: "11px", fontWeight: "normal", textTransform: "none" }}>(Optional)</span>
             </label>
             <p style={{ fontSize: '11px', color: 'var(--cream-muted)', marginBottom: '10px' }}>
-              Upload pictures for before and after (side by side, multiple images supported)
+              {isHealing ? "Upload pictures for before and after (side by side, multiple images supported)" : "Upload photos or media related to your testimony"}
             </p>
             <div className="mms-before-after-grid">
               
               {/* Before Pictures Column */}
               <div className="mms-field">
-                <label style={{ fontSize: '10px', color: 'var(--cream)' }}>Before Media (Pictures/Videos)</label>
+                <label style={{ fontSize: '10px', color: 'var(--cream)' }}>{isHealing ? "Before Media (Pictures/Videos)" : "Media Before (Optional)"}</label>
                 <div className="mms-upload-box-small">
                   <input
                     type="file"
@@ -1355,15 +1421,15 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
                     onChange={(e) => addBeforeFiles(e.target.files)}
                   />
                   <Icon.Upload />
-                  <h5>Add Before Picture(s)</h5>
-                  <p>Multiple images before healing</p>
+                  <h5>Add Picture(s) / Media</h5>
+                  <p>{isHealing ? "Multiple images before healing" : "Upload photos or files"}</p>
                 </div>
                 {beforeFiles.length > 0 && (
                   <div className="mms-file-chips">
                     {beforeFiles.map((f, i) => (
                       <div key={i} className="mms-file-chip">
                         <img src={f.url} alt="Before" style={{ width: '22px', height: '22px', objectFit: 'cover', borderRadius: '4px' }} />
-                        <span>Before {i + 1}</span>
+                        <span>File {i + 1}</span>
                         <button type="button" className="mms-file-chip-remove" onClick={() => removeBeforeFile(i)}>×</button>
                       </div>
                     ))}
@@ -1373,7 +1439,7 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
 
               {/* After Pictures Column */}
               <div className="mms-field">
-                <label style={{ fontSize: '10px', color: 'var(--cream)' }}>After Media (Pictures/Videos/Audio)</label>
+                <label style={{ fontSize: '10px', color: 'var(--cream)' }}>{isHealing ? "After Media (Pictures/Videos/Audio)" : "Media After (Optional)"}</label>
                 <div className="mms-upload-box-small">
                   <input
                     type="file"
@@ -1382,15 +1448,15 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
                     onChange={(e) => addAfterFiles(e.target.files)}
                   />
                   <Icon.Upload />
-                  <h5>Add After Picture(s)</h5>
-                  <p>Multiple images after healing</p>
+                  <h5>Add Picture(s) / Media</h5>
+                  <p>{isHealing ? "Multiple images after healing" : "Upload photos or files"}</p>
                 </div>
                 {afterFiles.length > 0 && (
                   <div className="mms-file-chips">
                     {afterFiles.map((f, i) => (
                       <div key={i} className="mms-file-chip">
                         <img src={f.url} alt="After" style={{ width: '22px', height: '22px', objectFit: 'cover', borderRadius: '4px' }} />
-                        <span>After {i + 1}</span>
+                        <span>File {i + 1}</span>
                         <button type="button" className="mms-file-chip-remove" onClick={() => removeAfterFile(i)}>×</button>
                       </div>
                     ))}
@@ -1415,7 +1481,9 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
           <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
             <span className="mms-preview-badge">Form: {form.fillerType}</span>
             {selectedCategory && (
-              <span className="mms-preview-badge">✦ {selectedCategory.name}</span>
+              <span className="mms-preview-badge">
+                ✦ {selectedCategory.name} {isOther && form.customCategory ? `(${form.customCategory})` : ""}
+              </span>
             )}
           </div>
 
@@ -1436,13 +1504,16 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
           </div>
 
           <div style={{ marginBottom: '16px' }}>
-            <h4 style={{ color: 'var(--gold-light)', fontSize: '13px', marginBottom: '6px' }}>Condition / Miracle Details</h4>
-            <p className="mms-preview-story"><strong>Condition:</strong> {form.conditionProblem || "Not specified"} {form.conditionDuration ? `(${form.conditionDuration})` : ''}</p>
-            {form.unableToDoBefore && <p className="mms-preview-story"><strong>Unable to do before:</strong> {form.unableToDoBefore}</p>}
-            {form.whatHappenedDuringProgram && <p className="mms-preview-story"><strong>What happened during program:</strong> {form.whatHappenedDuringProgram}</p>}
-            {form.ableToDoNow && <p className="mms-preview-story"><strong>Able to do now:</strong> {form.ableToDoNow}</p>}
+            <h4 style={{ color: 'var(--gold-light)', fontSize: '13px', marginBottom: '6px' }}>Testimony & Miracle Details</h4>
+            {isOther && form.customCategory && (
+              <p className="mms-preview-story"><strong>Category / Theme:</strong> {form.customCategory}</p>
+            )}
+            <p className="mms-preview-story"><strong>{isHealing ? "Condition:" : "Previous Situation / Challenge:"}</strong> {form.conditionProblem || "Not specified"} {form.conditionDuration ? `(${form.conditionDuration})` : ''}</p>
+            {form.unableToDoBefore && <p className="mms-preview-story"><strong>{isHealing ? "Unable to do before:" : "Limitations / Difficulties:"}</strong> {form.unableToDoBefore}</p>}
+            {form.whatHappenedDuringProgram && <p className="mms-preview-story"><strong>What happened:</strong> {form.whatHappenedDuringProgram}</p>}
+            {form.ableToDoNow && <p className="mms-preview-story"><strong>{isHealing ? "Able to do now:" : "Current Outcome / Breakthrough:"}</strong> {form.ableToDoNow}</p>}
             {form.inviterDetails && <p className="mms-preview-story"><strong>Invited by:</strong> {form.inviterDetails}</p>}
-            {form.healingCentreLocation && <p className="mms-preview-story"><strong>Healing Centre / Crusade:</strong> {form.healingCentreLocation}</p>}
+            {form.healingCentreLocation && <p className="mms-preview-story"><strong>{isHealing || isCrusade ? "Healing Centre / Crusade:" : "Location / Venue:"}</strong> {form.healingCentreLocation}</p>}
             {form.description && (
               <div style={{ marginTop: "10px", padding: "10px", background: "var(--navy-card)", borderRadius: "8px" }}>
                 <strong style={{ color: "var(--gold-light)", fontSize: "11px", display: "block", marginBottom: "4px" }}>Written Summary:</strong>
@@ -1593,6 +1664,7 @@ export default function UploadStepper({ onSuccess, onSubmit }) {
                     ableToDoNow: "",
                     inviterDetails: "",
                     healingCentreLocation: "",
+                    customCategory: "",
                     description: "",
                   });
                   setMedicalFiles([]);

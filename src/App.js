@@ -60,10 +60,10 @@ function KingsChatCallbackHandler({ children }) {
     }
 
     if (code) {
-      setStatusMessage("Verifying KingsChat account...");
+      const redirectUri = window.location.origin.includes("localhost") ? "https://testimonyportal.com" : window.location.origin;
       api.post("/api/auth/kingschat/verify", {
         code,
-        redirectUri: "https://testimonyportal.com"
+        redirectUri
       })
       .then(res => {
         localStorage.setItem("token", res.data.token);
