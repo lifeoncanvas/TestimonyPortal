@@ -70,7 +70,7 @@ function KingsChatCallbackHandler({ children }) {
         localStorage.setItem("user", JSON.stringify(res.data.user));
         window.history.replaceState({}, document.title, "/");
         const role = res.data.user?.role;
-        window.location.replace(role === "ADMIN" ? "/admin" : "/");
+        window.location.replace(role === "ADMIN" ? "/admin" : "/profile");
       })
       .catch(err => {
         console.error("KingsChat verification failed:", err);
@@ -87,9 +87,9 @@ function KingsChatCallbackHandler({ children }) {
       api.get("/api/auth/me", { headers: { Authorization: `Bearer ${token}` } })
         .then(res => {
           localStorage.setItem("user", JSON.stringify(res.data));
-          window.history.replaceState({}, document.title, "/");
+          window.history.replaceState({}, document.title, "/profile");
           const role = res.data?.role;
-          window.location.replace(role === "ADMIN" ? "/admin" : "/");
+          window.location.replace(role === "ADMIN" ? "/admin" : "/profile");
         })
         .catch(() => {
           window.history.replaceState({}, document.title, "/");
