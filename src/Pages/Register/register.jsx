@@ -2,8 +2,6 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import "./styles.css";
 import api from "../../services/axiosConfig";
-import kingsChatWebSdk from "kingschat-web-sdk";
-import "kingschat-web-sdk/dist/stylesheets/style.min.css";
 
 
 export default function Register() {
@@ -80,45 +78,11 @@ export default function Register() {
       "ffbcd492-38f3-4964-b3f6-d4c014ff2ade"
     ).trim();
 
-    const loginOptions = {
-      scopes: ["authenticate", "profile"],
-      clientId: clientId,
-    };
+    const redirectUri = encodeURIComponent("https://testimonyportal.com");
+    const scopes = encodeURIComponent('["authenticate","profile"]');
 
-    kingsChatWebSdk.login(loginOptions)
-      .then(async (tokenResponse) => {
-        console.log("KingsChat SDK Signup Success:", tokenResponse);
-        const { accessToken, user: kcUser } = tokenResponse;
-
-        try {
-          const res = await api.post("/api/auth/kingschat", {
-            token: accessToken,
-            email: kcUser?.email || null,
-            firstName: kcUser?.first_name || kcUser?.firstName || (kcUser?.name ? kcUser.name.split(" ")[0] : null),
-            lastName: kcUser?.last_name || kcUser?.lastName || (kcUser?.name && kcUser.name.includes(" ") ? kcUser.name.split(" ").slice(1).join(" ") : null),
-            username: kcUser?.username || null,
-          });
-
-          localStorage.setItem("token", res.data.token);
-          localStorage.setItem("user", JSON.stringify(res.data.user));
-          setLoading(false);
-          if (res.data.user?.role === "ADMIN") {
-            navigate("/admin");
-          } else {
-            navigate("/profile");
-          }
-        } catch (backendErr) {
-          console.error("Backend KingsChat signup error:", backendErr);
-          setLoading(false);
-          const msg = backendErr.response?.data?.message || backendErr.response?.data || backendErr.message || "KingsChat registration failed on server.";
-          setError(typeof msg === "string" ? msg : JSON.stringify(msg));
-        }
-      })
-      .catch((err) => {
-        console.error("KingsChat SDK signup error:", err);
-        setLoading(false);
-        setError("KingsChat registration was cancelled or failed to open.");
-      });
+    // OAuth2 Redirect flow (Callback delivery: Redirect)
+    window.location.href = `https://accounts.kingsch.at/?client_id=${clientId}&scopes=${scopes}&redirect_uri=${redirectUri}`;
   };
 
   return (

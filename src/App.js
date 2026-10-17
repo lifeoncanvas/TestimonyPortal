@@ -60,7 +60,7 @@ function KingsChatCallbackHandler({ children }) {
     }
 
     if (code) {
-      const redirectUri = window.location.origin.includes("localhost") ? "https://testimonyportal.com" : window.location.origin;
+      const redirectUri = "https://testimonyportal.com";
       api.post("/api/auth/kingschat/verify", {
         code,
         redirectUri
