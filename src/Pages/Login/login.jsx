@@ -57,11 +57,11 @@ export default function Login() {
     const clientId = (
       window.ENV?.KINGSCHAT_CLIENT_ID ||
       process.env.REACT_APP_KINGSCHAT_CLIENT_ID ||
-      "5510380c-caac-4baa-ad0c-288dcdffaf1f"
+      "7e2ec4b8-785c-45a9-9436-ecc3a06897db"
     ).trim();
 
     const loginOptions = {
-      scopes: ["authenticate", "profile"],
+      scopes: ["profile"],
       clientId,
     };
 
