@@ -61,7 +61,7 @@ export default function Login() {
     ).trim();
 
     const loginOptions = {
-      scopes: ["authenticate", "profile"],
+      scopes: ["profile"],
       clientId,
     };
 

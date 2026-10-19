@@ -81,7 +81,7 @@ export default function Register() {
     ).trim();
 
     const loginOptions = {
-      scopes: ["authenticate", "profile"],
+      scopes: ["profile"],
       clientId,
     };
 
