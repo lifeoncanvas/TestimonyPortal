@@ -55,7 +55,7 @@ export default function Login() {
     const clientId = (
       window.ENV?.KINGSCHAT_CLIENT_ID ||
       process.env.REACT_APP_KINGSCHAT_CLIENT_ID ||
-      "ffbcd492-38f3-4964-b3f6-d4c014ff2ade"
+      "7e2ec4b8-785c-45a9-9436-ecc3a06897db"
     ).trim();
 
     const redirectUri = encodeURIComponent("https://testimonyportal.com");
