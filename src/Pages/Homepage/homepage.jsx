@@ -1,5 +1,5 @@
 // Homepage.jsx
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate } from "react-router";
 import BottomNav from "../../Sections/BottomNav/BottomNav";
 import api from "../../services/axiosConfig";
@@ -196,7 +196,8 @@ export default function Homepage() {
   const [trending, setTrending] = useState([]);
   const [tod, setTod] = useState(null);
   const [stories, setStories] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const cacheRef = useRef({});
 
   useEffect(() => {
     if (isLoggedIn) {
@@ -209,43 +210,62 @@ export default function Homepage() {
     }
   }, [isLoggedIn]);
 
-  // Fetch trending, today's testimony, and recent stories in parallel for fast loading
+  // Fetch trending and testimony of the day once on initial mount
   useEffect(() => {
-    fetchAllData();
+    fetchGlobalHomeData();
+  }, []);
+
+  const fetchGlobalHomeData = async () => {
+    try {
+      const [trendingRes, todayRes] = await Promise.allSettled([
+        api.get("/api/testimonies/trending"),
+        api.get("/api/testimonies/today"),
+      ]);
+
+      if (trendingRes.status === "fulfilled" && trendingRes.value.data) {
+        setTrending(trendingRes.value.data || []);
+      }
+
+      if (todayRes.status === "fulfilled" && todayRes.value.data) {
+        setTod(todayRes.value.data);
+      } else {
+        api.get("/api/testimonies/featured").then((res) => {
+          if (res.data && res.data.length > 0) setTod(res.data[0]);
+        }).catch(() => {});
+      }
+    } catch (e) {
+      console.error("Error loading home feeds:", e);
+    }
+  };
+
+  // Fetch stories for active category with instant in-memory cache
+  useEffect(() => {
+    fetchCategoryStories(activeCategory);
   }, [activeCategory]);
 
-  const fetchAllData = async () => {
-    setLoading(true);
-    const categoryId = KEY_TO_ID[activeCategory];
+  const fetchCategoryStories = async (category) => {
+    // If we have cached results for this category, display immediately (zero delay)
+    if (cacheRef.current[category]) {
+      setStories(cacheRef.current[category]);
+    } else {
+      setLoading(true);
+    }
+
+    const categoryId = KEY_TO_ID[category];
     const params = categoryId ? { categoryId, status: "APPROVED" } : { status: "APPROVED" };
 
-    const [trendingRes, todayRes, storiesRes] = await Promise.allSettled([
-      api.get("/api/testimonies/trending"),
-      api.get("/api/testimonies/today"),
-      api.get("/api/testimonies", { params }),
-    ]);
-
-    if (trendingRes.status === "fulfilled") {
-      setTrending(trendingRes.value.data || []);
-    }
-
-    if (todayRes.status === "fulfilled" && todayRes.value.data) {
-      setTod(todayRes.value.data);
-    } else {
-      // Fallback: fetch featured if today testimony is empty
-      api.get("/api/testimonies/featured").then((res) => {
-        if (res.data && res.data.length > 0) setTod(res.data[0]);
-      }).catch(() => {});
-    }
-
-    if (storiesRes.status === "fulfilled") {
-      const resData = storiesRes.value.data;
-      const rawList = resData.content || (Array.isArray(resData) ? resData : []);
+    try {
+      const res = await api.get("/api/testimonies", { params });
+      const rawList = res.data?.content || (Array.isArray(res.data) ? res.data : []);
       const approvedStories = rawList.filter(t => (!t.status || t.status === "APPROVED") && !t.isGrc);
+      
+      cacheRef.current[category] = approvedStories;
       setStories(approvedStories);
+    } catch (err) {
+      console.error("Error loading category stories:", err);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   const handleDelete = async (e, id) => {
@@ -517,7 +537,7 @@ export default function Homepage() {
                 role="button" tabIndex={0}
                 onKeyDown={(e) => e.key === "Enter" && goToTestimony(item.id)}
               >
-                <img src={item.img} alt="" className="carousel-img" />
+                <img src={item.img} alt="" className="carousel-img" loading="lazy" decoding="async" />
                 <div className="carousel-card-overlay" style={{ background: item.overlay }} />
                 <span className="carousel-chip">{item.categoryLabel}</span>
                 <div className="carousel-play" aria-hidden="true">
@@ -548,8 +568,10 @@ export default function Homepage() {
             role="button" tabIndex={0}
             onKeyDown={(e) => e.key === "Enter" && goToTestimony(tod.id)}>
             <img
-              src={tod.media && tod.media.length > 0 ? api.defaults.baseURL + tod.media[0].fileUrl : "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=900&q=80"}
+              src={getTestimonyMediaUrl(tod, "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=900&q=80")}
               alt="" className="tod-bg-img"
+              loading="lazy"
+              decoding="async"
             />
             <div className="tod-inner">
               <div className="tod-badge">✦ testimony of the day</div>
@@ -643,7 +665,7 @@ export default function Homepage() {
                 onKeyDown={(e) => e.key === "Enter" && goToTestimony(card.id)}
               >
                 <div className="story-thumb">
-                  <img src={card.img} alt={card.title} className="story-thumb-img" />
+                  <img src={card.img} alt={card.title} className="story-thumb-img" loading="lazy" decoding="async" />
                   <div className="story-thumb-scrim" />
                   <span className="story-read-time">{card.readTime}</span>
                   {(currentUser?.role === "ADMIN" || currentUser?.id === card.userId) && (
