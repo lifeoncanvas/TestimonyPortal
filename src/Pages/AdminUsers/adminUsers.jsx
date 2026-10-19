@@ -76,14 +76,20 @@ export default function AdminUsers() {
       u.email?.toLowerCase().includes(search.toLowerCase()) ||
       u.country?.toLowerCase().includes(search.toLowerCase());
 
+    const isKC = u.signupMethod === "KINGSCHAT" || u.authProvider === "KINGSCHAT" || (u.kingschatId && u.kingschatId.trim() !== "");
+
     const matchesRole =
       roleFilter === "ALL" ||
       (roleFilter === "ADMIN" && u.role === "ADMIN") ||
-      (roleFilter === "USER" && u.role !== "ADMIN");
+      (roleFilter === "USER" && u.role !== "ADMIN") ||
+      (roleFilter === "KINGSCHAT" && isKC) ||
+      (roleFilter === "ACCOUNT" && !isKC);
 
     return matchesSearch && matchesRole;
   });
 
+  const kcCount = users.filter(u => u.signupMethod === "KINGSCHAT" || u.authProvider === "KINGSCHAT" || (u.kingschatId && u.kingschatId.trim() !== "")).length;
+  const directCount = users.length - kcCount;
   const adminCount = users.filter(u => u.role === "ADMIN").length;
   const userCount = users.filter(u => u.role !== "ADMIN").length;
 
@@ -110,18 +116,25 @@ export default function AdminUsers() {
             <p>Total Users</p>
           </div>
         </div>
+        <div className="au-summary-card" style={{ borderColor: 'rgba(59, 130, 246, 0.4)' }}>
+          <span style={{ fontSize: '18px' }}>💬</span>
+          <div>
+            <h3>{kcCount}</h3>
+            <p>KingsChat Users</p>
+          </div>
+        </div>
+        <div className="au-summary-card">
+          <span style={{ fontSize: '18px' }}>✉️</span>
+          <div>
+            <h3>{directCount}</h3>
+            <p>Direct Accounts</p>
+          </div>
+        </div>
         <div className="au-summary-card active-admin">
           <Shield size={18} />
           <div>
             <h3>{adminCount}</h3>
             <p>Active Admins</p>
-          </div>
-        </div>
-        <div className="au-summary-card">
-          <UserCheck size={18} />
-          <div>
-            <h3>{userCount}</h3>
-            <p>Regular Members</p>
           </div>
         </div>
       </section>
@@ -143,19 +156,25 @@ export default function AdminUsers() {
             className={`au-tab ${roleFilter === "ALL" ? "active" : ""}`}
             onClick={() => setRoleFilter("ALL")}
           >
-            All Users ({users.length})
+            All ({users.length})
+          </button>
+          <button
+            className={`au-tab ${roleFilter === "KINGSCHAT" ? "active" : ""}`}
+            onClick={() => setRoleFilter("KINGSCHAT")}
+          >
+            💬 KingsChat ({kcCount})
+          </button>
+          <button
+            className={`au-tab ${roleFilter === "ACCOUNT" ? "active" : ""}`}
+            onClick={() => setRoleFilter("ACCOUNT")}
+          >
+            ✉️ Direct Signups ({directCount})
           </button>
           <button
             className={`au-tab ${roleFilter === "ADMIN" ? "active" : ""}`}
             onClick={() => setRoleFilter("ADMIN")}
           >
             🛡️ Admins ({adminCount})
-          </button>
-          <button
-            className={`au-tab ${roleFilter === "USER" ? "active" : ""}`}
-            onClick={() => setRoleFilter("USER")}
-          >
-            👤 Regular Users ({userCount})
           </button>
         </div>
       </section>
@@ -176,6 +195,7 @@ export default function AdminUsers() {
           <div className="au-grid">
             {filteredUsers.map((u) => {
               const isAdmin = u.role === "ADMIN";
+              const isKC = u.signupMethod === "KINGSCHAT" || u.authProvider === "KINGSCHAT" || (u.kingschatId && u.kingschatId.trim() !== "");
               const initials = u.name ? u.name.slice(0, 2).toUpperCase() : "U";
 
               return (
@@ -187,9 +207,14 @@ export default function AdminUsers() {
                       <p className="au-user-email">{u.email || "No email provided"}</p>
                       {u.country && <span className="au-user-country">📍 {u.country}</span>}
                     </div>
-                    <span className={`au-role-badge ${isAdmin ? "admin" : "user"}`}>
-                      {isAdmin ? <><Shield size={12} /> ADMIN</> : <><User size={12} /> USER</>}
-                    </span>
+                    <div className="au-badges-container">
+                      <span className={`au-role-badge ${isAdmin ? "admin" : "user"}`}>
+                        {isAdmin ? <><Shield size={12} /> ADMIN</> : <><User size={12} /> USER</>}
+                      </span>
+                      <span className={`au-auth-badge ${isKC ? "kingschat" : "account"}`}>
+                        {isKC ? "💬 KingsChat" : "✉️ Account Created"}
+                      </span>
+                    </div>
                   </div>
 
                   <div className="au-user-actions" style={{display: 'flex', gap: '8px', flexWrap: 'wrap'}}>
