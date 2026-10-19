@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import "./styles.css";
 import api from "../../services/axiosConfig";
+import kingsChatWebSdk from "kingschat-web-sdk";
+import "kingschat-web-sdk/dist/stylesheets/style.min.css";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -58,11 +60,59 @@ export default function Login() {
       "7e2ec4b8-785c-45a9-9436-ecc3a06897db"
     ).trim();
 
-    const redirectUri = encodeURIComponent("https://testimonyportal.com");
-    const scopes = encodeURIComponent('["authenticate","profile"]');
+    const loginOptions = {
+      scopes: ["authenticate", "profile"],
+      clientId,
+    };
 
-    // OAuth2 Redirect flow (Callback delivery: Redirect)
-    window.location.href = `https://accounts.kingsch.at/?client_id=${clientId}&scopes=${scopes}&redirect_uri=${redirectUri}`;
+    kingsChatWebSdk
+      .login(loginOptions)
+      .then(async (tokenResponse) => {
+        console.log("KingsChat SDK Login Success:", tokenResponse);
+        const { accessToken, user: kcUser } = tokenResponse;
+
+        try {
+          const res = await api.post("/api/auth/kingschat", {
+            token: accessToken,
+            email: kcUser?.email || null,
+            firstName:
+              kcUser?.first_name ||
+              kcUser?.firstName ||
+              (kcUser?.name ? kcUser.name.split(" ")[0] : null),
+            lastName:
+              kcUser?.last_name ||
+              kcUser?.lastName ||
+              (kcUser?.name && kcUser.name.includes(" ")
+                ? kcUser.name.split(" ").slice(1).join(" ")
+                : null),
+            username: kcUser?.username || null,
+          });
+
+          localStorage.setItem("token", res.data.token);
+          localStorage.setItem("user", JSON.stringify(res.data.user));
+
+          if (res.data.user?.role === "ADMIN") {
+            navigate("/admin");
+          } else {
+            navigate("/");
+          }
+        } catch (backendErr) {
+          console.error("Backend KingsChat Auth Error:", backendErr);
+          const msg =
+            backendErr.response?.data?.message ||
+            (typeof backendErr.response?.data === "string" ? backendErr.response?.data : null) ||
+            backendErr.message ||
+            "KingsChat authentication failed on server.";
+          setError(msg);
+        } finally {
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        console.error("KingsChat login error:", err);
+        setLoading(false);
+        setError("KingsChat login was cancelled or failed.");
+      });
   };
 
   const toggleMethod = (method) => {
