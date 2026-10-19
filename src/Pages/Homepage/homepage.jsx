@@ -349,7 +349,7 @@ export default function Homepage() {
         <div className="header-actions">
           <button
             className="header-add-btn"
-            onClick={() => navigate("/upload")}
+            onClick={() => navigate(isLoggedIn ? "/upload" : "/login")}
             style={{
               background: "linear-gradient(135deg, #d97706, #b45309)",
               color: "#fff",
@@ -383,7 +383,7 @@ export default function Homepage() {
               )}
               <button className="icon-btn" aria-label="Notifications"
                 onClick={() => navigate("/notifications")}>🔔</button>
-              <div className="avatar" onClick={() => navigate("/profile")} style={{ cursor: "pointer" }}>
+              <div className="avatar" onClick={() => navigate("/profile")} style={{ cursor: "pointer" }} title="My Profile">
                 {currentUser?.avatarUrl && !currentUser.avatarUrl.includes("dicebear") && !currentUser.avatarUrl.includes("pravatar") ? (
                   <img src={currentUser.avatarUrl} alt="User profile" />
                 ) : (
@@ -392,14 +392,31 @@ export default function Homepage() {
               </div>
             </>
           ) : (
-            <>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <div
+                className="avatar guest-avatar"
+                onClick={() => navigate("/login")}
+                style={{
+                  cursor: "pointer",
+                  background: "#e2e8f0",
+                  color: "#475569",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: "36px",
+                  height: "36px",
+                  borderRadius: "50%",
+                  fontSize: "16px",
+                  fontWeight: "600"
+                }}
+                title="Profile (Click to Sign In)"
+              >
+                👤
+              </div>
               <button className="header-login-btn" onClick={() => navigate("/login")}>
                 Sign In
               </button>
-              <button className="header-register-btn" onClick={() => navigate("/register")}>
-                Register
-              </button>
-            </>
+            </div>
           )}
         </div>
       </header>

@@ -138,9 +138,9 @@ function App() {
     <BrowserRouter>
       <KingsChatCallbackHandler>
         <Routes>
-        <Route path="/" element={<ProtectedRoute><Homepage /></ProtectedRoute>} />
+        <Route path="/" element={<Homepage />} />
         <Route path="/browse" element={<ProtectedRoute requireAdmin={true}><Browse /></ProtectedRoute>} />
-        <Route path="/testimony/:id" element={<ProtectedRoute><TestimonyDetails /></ProtectedRoute>} />
+        <Route path="/testimony/:id" element={<TestimonyDetails />} />
         <Route path="/upload" element={<ProtectedRoute><UploadTestimony /></ProtectedRoute>} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />

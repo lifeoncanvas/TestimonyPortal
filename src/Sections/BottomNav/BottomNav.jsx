@@ -58,10 +58,10 @@ export default function BottomNav({ isLoggedIn }) {
             path: "/login",
           },
           {
-            key: "register",
-            icon: "📝",
-            label: "Register",
-            path: "/register",
+            key: "profile",
+            icon: "👤",
+            label: "Profile",
+            path: "/profile",
           },
         ]),
   ];
